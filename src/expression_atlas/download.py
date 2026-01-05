@@ -77,6 +77,20 @@ def has_r_available() -> bool:
     """
     return _check_rpy2()
 
+
+def has_converter_available() -> bool:
+    """
+    Check if the cloud converter service is configured.
+
+    Returns
+    -------
+    bool
+        True if CONVERTER_URL environment variable is set.
+    """
+    import os
+    return bool(os.environ.get("CONVERTER_URL", ""))
+
+
 # Lazy check for rpy2/R availability
 _rpy2_checked = False
 _has_rpy2 = False
@@ -157,8 +171,16 @@ def get_atlas_experiment(experiment_accession: str) -> SimpleList | None:
             # Use R to load .Rdata files (full compatibility)
             experiment_summary = _download_and_load_rdata_rpy2(full_url, experiment_accession)
         else:
-            # Fallback: download TSV files
-            experiment_summary = _download_tsv_fallback(experiment_accession)
+            # Fallback 1: Try TSV files
+            try:
+                experiment_summary = _download_tsv_fallback(experiment_accession)
+            except DownloadError:
+                # Fallback 2: Try cloud converter service if configured
+                if has_converter_available():
+                    logger.info("TSV not available, trying cloud converter service...")
+                    experiment_summary = _download_via_converter(full_url, experiment_accession)
+                else:
+                    raise
 
         if experiment_summary:
             logger.info(f"Successfully downloaded experiment summary object for {experiment_accession}")
@@ -579,6 +601,64 @@ def _create_expression_set_from_tsv(
     eset.experimentData["source"] = "tsv"
 
     return eset
+
+
+# =============================================================================
+# CLOUD CONVERTER IMPLEMENTATION (when R is not available and no TSV)
+# =============================================================================
+
+def _download_via_converter(rdata_url: str, accession: str) -> SimpleList:
+    """
+    Download experiment data via the cloud converter service.
+
+    This is used when:
+    - R is not installed locally
+    - TSV files are not available
+    - CONVERTER_URL environment variable is set
+
+    The service runs R remotely and returns the data in a portable format.
+    """
+    from expression_atlas.converter import ConverterClient, ConverterError
+
+    client = ConverterClient()
+
+    try:
+        bundles = client.convert_and_load(rdata_url, accession)
+    except ConverterError as e:
+        raise DownloadError(accession, f"Cloud converter failed: {e}")
+
+    # Convert bundles to SimpleList with SummarizedExperiment/ExpressionSet
+    result = SimpleList()
+
+    for name, bundle in bundles.items():
+        if name == "rnaseq" or name.startswith("dataset_rnaseq"):
+            # Create SummarizedExperiment
+            se = SummarizedExperiment()
+            if bundle.matrix is not None:
+                se.assays["counts"] = bundle.matrix
+            se.rownames = bundle.rownames
+            se.colnames = bundle.colnames
+            se.rowData = bundle.genes
+            se.colData = bundle.samples
+            se.metadata = bundle.meta
+            se.metadata["source"] = "converter"
+            result["rnaseq"] = se
+        else:
+            # Create ExpressionSet (microarray)
+            eset = ExpressionSet()
+            if bundle.matrix is not None:
+                eset.exprs = bundle.matrix
+            eset.featureNames = bundle.rownames
+            eset.sampleNames = bundle.colnames
+            eset.featureData = bundle.genes
+            eset.phenoData = bundle.samples
+            eset.experimentData = bundle.meta
+            eset.experimentData["source"] = "converter"
+            # Use the original name (e.g., A-AFFY-126) or cleaned name
+            key = name.replace("dataset_", "") if name.startswith("dataset_") else name
+            result[key] = eset
+
+    return result
 
 
 # Backwards-compatible aliases

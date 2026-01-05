@@ -14,6 +14,7 @@ from expression_atlas.client import ExpressionAtlasClient
 from expression_atlas.download import (
     get_atlas_data,
     get_atlas_experiment,
+    has_converter_available,
     has_r_available,
     has_tsv_files,
 )
@@ -40,6 +41,7 @@ __all__ = [
     # Utility functions
     "has_tsv_files",  # Check if experiment has TSV files
     "has_r_available",  # Check if R is available
+    "has_converter_available",  # Check if cloud converter is configured
     # R-compatible data structures
     "SimpleList",
     "SummarizedExperiment",
