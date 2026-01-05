@@ -1,7 +1,5 @@
 """Tests for data models."""
 
-import pytest
-import pandas as pd
 
 from expression_atlas.models import (
     ExperimentSummary,

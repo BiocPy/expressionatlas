@@ -1,5 +1,7 @@
 """BioStudies API client for Expression Atlas."""
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -225,7 +227,7 @@ class BioStudiesAPI:
         """Close the session."""
         self.session.close()
 
-    def __enter__(self) -> "BioStudiesAPI":
+    def __enter__(self) -> BioStudiesAPI:
         return self
 
     def __exit__(self, *args: Any) -> None:

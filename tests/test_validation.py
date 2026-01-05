@@ -2,12 +2,12 @@
 
 import pytest
 
+from expression_atlas.exceptions import InvalidAccessionError
 from expression_atlas.validation import (
     filter_valid_accessions,
     is_valid_accession,
     validate_accession,
 )
-from expression_atlas.exceptions import InvalidAccessionError
 
 
 class TestIsValidAccession:

@@ -1,7 +1,7 @@
 """Validation utilities for Expression Atlas."""
 
 import re
-from typing import Sequence
+from collections.abc import Sequence
 
 from expression_atlas.exceptions import InvalidAccessionError
 

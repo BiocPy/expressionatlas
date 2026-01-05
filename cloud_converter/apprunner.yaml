@@ -1,0 +1,24 @@
+# App Runner configuration for Expression Atlas Converter
+# Use this with: aws apprunner create-service --cli-input-json file://apprunner-config.json
+# Or configure via AWS Console
+
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - echo "Using pre-built Docker image from ECR"
+run:
+  runtime-version: 3.11
+  command: python server/main.py
+  network:
+    port: 8080
+  env:
+    - name: AWS_REGION
+      value: us-east-1
+    - name: S3_BUCKET_NAME
+      value: expression-atlas-converter
+    - name: SIGNED_URL_EXPIRY_MINUTES
+      value: "60"
+    - name: MAX_RDATA_SIZE_MB
+      value: "500"

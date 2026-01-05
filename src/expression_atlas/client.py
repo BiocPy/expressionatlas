@@ -1,14 +1,16 @@
 """Main client interface for Expression Atlas."""
 
+from __future__ import annotations
+
 import logging
-from typing import Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 
 from expression_atlas.api import BioStudiesAPI
-from expression_atlas.download import get_atlas_experiment, get_atlas_data
+from expression_atlas.download import get_atlas_data, get_atlas_experiment
 from expression_atlas.models import search_results_to_dataframe
-from expression_atlas.rcompat import SimpleList, SummarizedExperiment, ExpressionSet
+from expression_atlas.rcompat import SimpleList
 from expression_atlas.validation import validate_accession
 
 logger = logging.getLogger(__name__)
@@ -210,7 +212,7 @@ class ExpressionAtlasClient:
             self._api.close()
             self._api = None
 
-    def __enter__(self) -> "ExpressionAtlasClient":
+    def __enter__(self) -> ExpressionAtlasClient:
         return self
 
     def __exit__(self, *args: object) -> None:

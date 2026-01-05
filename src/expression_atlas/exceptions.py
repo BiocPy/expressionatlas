@@ -1,5 +1,7 @@
 """Custom exceptions for Expression Atlas client."""
 
+from __future__ import annotations
+
 
 class ExpressionAtlasError(Exception):
     """Base exception for Expression Atlas errors."""

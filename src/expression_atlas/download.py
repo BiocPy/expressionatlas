@@ -8,13 +8,14 @@ Provides full compatibility with the R package:
 The data structures (SummarizedExperiment, ExpressionSet) match R exactly.
 """
 
+from __future__ import annotations
+
 import io
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
-from urllib.request import urlopen
 from urllib.error import URLError
+from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
@@ -27,6 +28,54 @@ logger = logging.getLogger(__name__)
 
 # FTP base URL for Expression Atlas experiment data
 FTP_BASE_URL = "ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/experiments"
+
+
+def has_tsv_files(accession: str) -> bool:
+    """
+    Check if an experiment has TSV files available for download.
+
+    This is useful when R is not installed - only experiments with TSV files
+    can be downloaded in that case.
+
+    Parameters
+    ----------
+    accession : str
+        Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
+
+    Returns
+    -------
+    bool
+        True if TSV files are available, False otherwise.
+    """
+    validate_accession(accession)
+    base_url = f"{FTP_BASE_URL}/{accession}"
+
+    # Check for raw counts (RNA-seq) or normalized expressions (microarray)
+    counts_url = f"{base_url}/{accession}-raw-counts.tsv"
+    norm_url = f"{base_url}/{accession}-normalized-expressions.tsv"
+
+    for url in [counts_url, norm_url]:
+        try:
+            with urlopen(url, timeout=10) as response:
+                # Just check if we can connect - read a tiny bit
+                response.read(100)
+                return True
+        except Exception:
+            continue
+
+    return False
+
+
+def has_r_available() -> bool:
+    """
+    Check if R and rpy2 are available for loading .Rdata files.
+
+    Returns
+    -------
+    bool
+        True if R can be used, False otherwise.
+    """
+    return _check_rpy2()
 
 # Lazy check for rpy2/R availability
 _rpy2_checked = False
@@ -327,13 +376,15 @@ def _download_tsv_fallback(accession: str) -> SimpleList:
     result = SimpleList()
     base_url = f"{FTP_BASE_URL}/{accession}"
 
+    # Try to get sample annotations from condensed-sdrf.tsv
+    sdrf_url = f"{base_url}/{accession}.condensed-sdrf.tsv"
+    design_df = _try_download_sdrf(sdrf_url)
+
     # Try RNA-seq first (raw counts)
     counts_url = f"{base_url}/{accession}-raw-counts.tsv"
-    design_url = f"{base_url}/{accession}-experiment-design.tsv"
 
     try:
         counts_df = _download_tsv(counts_url)
-        design_df = _try_download_tsv(design_url)
         result["rnaseq"] = _create_summarized_experiment_from_tsv(counts_df, design_df, accession)
         logger.info(f"Downloaded RNA-seq data from TSV for {accession}")
         return result
@@ -344,7 +395,6 @@ def _download_tsv_fallback(accession: str) -> SimpleList:
     norm_url = f"{base_url}/{accession}-normalized-expressions.tsv"
     try:
         norm_df = _download_tsv(norm_url)
-        design_df = _try_download_tsv(design_url)
         # Could be microarray or RNA-seq normalized
         result["normalized"] = _create_expression_set_from_tsv(norm_df, design_df, accession)
         logger.info(f"Downloaded normalized data from TSV for {accession}")
@@ -367,6 +417,71 @@ def _download_tsv(url: str) -> pd.DataFrame:
     return pd.read_csv(io.StringIO(content), sep="\t")
 
 
+def _try_download_sdrf(url: str) -> pd.DataFrame | None:
+    """
+    Try to download and parse condensed-sdrf.tsv for sample annotations.
+
+    The condensed-sdrf format varies slightly:
+    Pattern A (7 cols): accession, (empty), sample_id, type, attribute, value, ontology_url
+    Pattern B (5-6 cols): accession, sample_id, type, attribute, value[, ontology_url]
+
+    This pivots it into a wide format with samples as rows and attributes as columns.
+    """
+    try:
+        logger.debug(f"Downloading sample annotations: {url}")
+        with urlopen(url, timeout=60) as response:
+            content = response.read().decode("utf-8")
+
+        # Parse without headers - the format is fixed
+        lines = content.strip().split("\n")
+        if not lines:
+            return None
+
+        # Detect format from first line
+        first_cols = lines[0].split("\t")
+        if len(first_cols) >= 6 and first_cols[1] == "":
+            # Pattern A: col[2]=sample_id, col[4]=attr, col[5]=value
+            sample_idx, attr_idx, value_idx = 2, 4, 5
+        else:
+            # Pattern B: col[1]=sample_id, col[3]=attr, col[4]=value
+            sample_idx, attr_idx, value_idx = 1, 3, 4
+
+        # Parse each line into a list for proper pivoting
+        records: list[tuple[str, str, str]] = []
+        for line in lines:
+            parts = line.split("\t")
+            if len(parts) > max(sample_idx, attr_idx, value_idx):
+                sample_id = parts[sample_idx]
+                attr_name = parts[attr_idx]
+                attr_value = parts[value_idx]
+                records.append((sample_id, attr_name, attr_value))
+
+        if not records:
+            return None
+
+        # Create DataFrame and pivot to wide format
+        df = pd.DataFrame(records, columns=["sample_id", "attribute", "value"])
+
+        # Pivot: samples as rows, attributes as columns
+        result = df.pivot_table(
+            index="sample_id",
+            columns="attribute",
+            values="value",
+            aggfunc="first",  # Take first value if duplicates
+        )
+
+        # Clean up: remove column name level name
+        result.columns.name = None
+        result.index.name = "sample_id"
+
+        logger.debug(f"Parsed sample annotations: {result.shape[0]} samples, {result.shape[1]} attributes")
+        return result
+
+    except Exception as e:
+        logger.debug(f"Could not download sample annotations: {e}")
+        return None
+
+
 def _try_download_tsv(url: str) -> pd.DataFrame | None:
     """Try to download TSV, return None if fails."""
     try:
@@ -386,9 +501,18 @@ def _create_summarized_experiment_from_tsv(
     if counts_df.empty:
         return se
 
-    # First column is gene IDs
-    gene_col = counts_df.columns[0]
-    sample_cols = list(counts_df.columns[1:])
+    # Find numeric columns (sample data) vs annotation columns
+    # TSV files typically have Gene ID, Gene Name, then sample columns
+    numeric_cols = counts_df.select_dtypes(include=[np.number]).columns.tolist()
+    annotation_cols = [c for c in counts_df.columns if c not in numeric_cols]
+
+    if not numeric_cols:
+        logger.warning("No numeric columns found in counts TSV")
+        return se
+
+    # Use first annotation column as gene IDs (usually "Gene ID")
+    gene_col = annotation_cols[0] if annotation_cols else counts_df.columns[0]
+    sample_cols = numeric_cols
 
     se.rownames = counts_df[gene_col].tolist()
     se.colnames = sample_cols
@@ -396,14 +520,18 @@ def _create_summarized_experiment_from_tsv(
     # Expression matrix: genes × samples (same orientation as R!)
     se.assays["counts"] = counts_df[sample_cols].values.astype(np.float64)
 
-    # Create rowData
+    # Create rowData from annotation columns
     se.rowData = pd.DataFrame(index=se.rownames)
+    for col in annotation_cols:
+        if col != gene_col:
+            se.rowData[col] = counts_df[col].values
     se.rowData.index.name = "gene_id"
 
     # Create colData from design file if available
     if design_df is not None and not design_df.empty:
-        # Design file usually has sample ID as first column
-        se.colData = design_df.set_index(design_df.columns[0])
+        # design_df already has sample_id as index from _try_download_sdrf
+        # Reindex to match the sample columns from the counts matrix
+        se.colData = design_df.reindex(se.colnames)
     else:
         se.colData = pd.DataFrame(index=se.colnames)
     se.colData.index.name = "sample_id"
@@ -441,7 +569,8 @@ def _create_expression_set_from_tsv(
 
     # Create phenoData from design file if available
     if design_df is not None and not design_df.empty:
-        eset.phenoData = design_df.set_index(design_df.columns[0])
+        # design_df already has sample_id as index from _try_download_sdrf
+        eset.phenoData = design_df.reindex(eset.sampleNames)
     else:
         eset.phenoData = pd.DataFrame(index=eset.sampleNames)
     eset.phenoData.index.name = "sample_id"

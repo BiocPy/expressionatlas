@@ -11,18 +11,23 @@ Full R compatibility: Data structures match the R package exactly:
 """
 
 from expression_atlas.client import ExpressionAtlasClient
-from expression_atlas.download import get_atlas_experiment, get_atlas_data
-from expression_atlas.rcompat import (
-    SimpleList,
-    SummarizedExperiment,
-    ExpressionSet,
+from expression_atlas.download import (
+    get_atlas_data,
+    get_atlas_experiment,
+    has_r_available,
+    has_tsv_files,
 )
-from expression_atlas.models import SearchResult
 from expression_atlas.exceptions import (
+    APIError,
+    DownloadError,
     ExpressionAtlasError,
     InvalidAccessionError,
-    DownloadError,
-    APIError,
+)
+from expression_atlas.models import SearchResult
+from expression_atlas.rcompat import (
+    ExpressionSet,
+    SimpleList,
+    SummarizedExperiment,
 )
 
 __version__ = "0.1.0"
@@ -32,6 +37,9 @@ __all__ = [
     # R-compatible functions (same names as R package)
     "get_atlas_experiment",  # getAtlasExperiment()
     "get_atlas_data",  # getAtlasData()
+    # Utility functions
+    "has_tsv_files",  # Check if experiment has TSV files
+    "has_r_available",  # Check if R is available
     # R-compatible data structures
     "SimpleList",
     "SummarizedExperiment",

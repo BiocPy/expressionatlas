@@ -73,7 +73,8 @@ class SummarizedExperiment:
     def shape(self) -> tuple[int, int]:
         """Return (n_genes, n_samples) shape."""
         if "counts" in self.assays:
-            return self.assays["counts"].shape
+            shape = self.assays["counts"].shape
+            return (int(shape[0]), int(shape[1]))
         return (len(self.rownames), len(self.colnames))
 
     @property
@@ -209,7 +210,8 @@ def r_dataframe_to_pandas(r_df: Any) -> pd.DataFrame:
 
     # pyreadr returns pandas DataFrames directly in most cases
     if hasattr(r_df, "to_pandas"):
-        return r_df.to_pandas()
+        result: pd.DataFrame = r_df.to_pandas()
+        return result
 
     return pd.DataFrame(r_df)
 
@@ -224,6 +226,8 @@ def r_matrix_to_numpy(r_matrix: Any) -> np.ndarray:
         return r_matrix
 
     if isinstance(r_matrix, pd.DataFrame):
-        return r_matrix.values
+        result: np.ndarray = r_matrix.values
+        return result
 
-    return np.array(r_matrix)
+    arr: np.ndarray = np.asarray(r_matrix)
+    return arr
