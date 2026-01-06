@@ -213,7 +213,7 @@ class ConverterClient:
         except Exception as e:
             if isinstance(e, ConverterError):
                 raise
-            raise ConverterError(f"Request failed: {e}")
+            raise ConverterError(f"Request failed: {e}") from e
 
     def download_bundle(self, signed_url: str, accession: str) -> Path:
         """
@@ -249,7 +249,7 @@ class ConverterClient:
             return bundle_dir
 
         except Exception as e:
-            raise ConverterError(f"Failed to download bundle: {e}")
+            raise ConverterError(f"Failed to download bundle: {e}") from e
 
     def load_bundle(self, bundle_dir: Path) -> dict[str, ConvertedBundle]:
         """
@@ -347,7 +347,7 @@ class ConverterClient:
 
             # Read dimensions
             parts = line.strip().split()
-            nrows, ncols, nnz = int(parts[0]), int(parts[1]), int(parts[2])
+            nrows, ncols, _ = int(parts[0]), int(parts[1]), int(parts[2])
 
             # Create dense matrix
             matrix = np.zeros((nrows, ncols))

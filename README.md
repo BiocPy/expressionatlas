@@ -1,13 +1,13 @@
 # Expression Atlas Python Client
 
-A Python client for searching and downloading gene expression datasets from [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa).
+Python client for searching and downloading gene expression datasets from [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa), mirroring the R Bioconductor package.
 
 ## Features
 
 - Search for Expression Atlas experiments by properties and species
 - Download RNA-seq and microarray experiment data
-- Returns data as pandas DataFrames and AnnData objects
-- Full type hints and async support
+- R-compatible data structures: `SummarizedExperiment` (RNA-seq) and `ExpressionSet` (microarray) wrapped in `SimpleList`
+- Sync API with full type hints
 
 ## Installation
 
@@ -26,32 +26,41 @@ pip install -e ".[dev]"
 ```python
 from expression_atlas import ExpressionAtlasClient
 
-# Initialize client
 client = ExpressionAtlasClient()
 
-# Search for experiments
+# Search experiments (DataFrame with Accession/Species/Type/Title)
 results = client.search_experiments(properties=["cancer"], species="homo sapiens")
-print(results)
 
-# Download a single experiment
-experiment = client.get_experiment("E-MTAB-1624")
+# Download a single experiment (SimpleList)
+exp = client.get_experiment("E-MTAB-1624")
 
-# Download multiple experiments
-experiments = client.get_experiments(["E-MTAB-1624", "E-MTAB-1625"])
+# RNA-seq example
+rnaseq = exp["rnaseq"]  # SummarizedExperiment
+counts = rnaseq.assays["counts"]  # numpy array genes × samples
+sample_annotations = rnaseq.colData
+
+# Microarray example
+eset = exp["A-AFFY-126"]  # ExpressionSet
+exprs = eset.exprs  # probes × samples
+pheno = eset.phenoData
+
+# Multiple experiments
+exps = client.get_experiments(["E-MTAB-1624", "E-MTAB-1625"])
 ```
 
 ## Data Structures
 
 ### RNA-seq Data
-RNA-seq experiments are returned as `AnnData` objects containing:
-- Raw counts matrix
-- Sample annotations in `.obs`
-- Gene annotations in `.var`
-- Experiment metadata in `.uns`
+RNA-seq experiments are returned as `SummarizedExperiment` objects containing:
+- `assays["counts"]`: genes × samples matrix (orientation matches R package)
+- `colData`: sample annotations
+- `rowData`: gene annotations
 
 ### Microarray Data
-Microarray experiments are returned as dictionaries keyed by array design accession,
-with each value being an `AnnData` object containing normalized intensities.
+Microarray experiments are returned as `ExpressionSet` objects containing:
+- `exprs`: probes × samples matrix (orientation matches R package)
+- `phenoData`: sample annotations
+- `featureData`: probe annotations
 
 ## API Reference
 

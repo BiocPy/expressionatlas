@@ -2,99 +2,101 @@
 
 ## Project Overview
 
-Python client for EMBL-EBI Expression Atlas providing **full R package compatibility**. The defining characteristic is maintaining identical data structures and behavior to the Bioconductor R package. Not a typical REST API wrapper—downloads experiment data via FTP with dual implementation strategy.
+Python client for EMBL-EBI Expression Atlas with **full R Bioconductor package compatibility**. Not a typical REST API wrapper—downloads experiment data via FTP with a tri-fallback strategy. The defining constraint: data structures and behavior must match the R package exactly.
 
-## Critical Architecture Decisions
+## Architecture
 
-### Dual Implementation Strategy (R Compatibility First)
-The package has two parallel download paths in [download.py](../src/expression_atlas/download.py):
-1. **Primary**: `rpy2` to load native `.Rdata` files when R is available
-2. **Fallback**: TSV parsing when R is unavailable
+### Tri-Fallback Download Strategy (`download.py`)
+```
+1. rpy2 + R → Load native .Rdata files (full fidelity)
+2. TSV parsing → Download TSV files from FTP (no R needed)
+3. Cloud converter → CONVERTER_URL env var service (no R, no TSV)
+```
+The `_check_rpy2()` function uses lazy evaluation with global state (`_rpy2_checked`, `_has_rpy2`) to avoid repeated R environment checks.
 
-Check `_check_rpy2()` pattern—lazy evaluation with global state to avoid repeated R environment checks.
+### Three-Layer Design
+| Layer | Module | Purpose |
+|-------|--------|---------|
+| User API | `client.py` | `ExpressionAtlasClient` class |
+| Low-level | `api.py` | BioStudies API, pagination, metadata |
+| Download | `download.py` | FTP ops, R/TSV/converter fallbacks |
 
-### Data Structures Mirror R Bioconductor Classes
-Python classes in [rcompat.py](../src/expression_atlas/rcompat.py) replicate R Bioconductor objects exactly:
-- `SummarizedExperiment`: RNA-seq data (genes × samples matrix)
-- `ExpressionSet`: Microarray data (probes × samples matrix)
-- `SimpleList`: Container matching S4Vectors::SimpleList
+### R-Compatible Data Structures (`rcompat.py`)
+- `SummarizedExperiment`: RNA-seq (genes × samples matrix)
+- `ExpressionSet`: Microarray (probes × samples matrix)  
+- `SimpleList`: Dict subclass matching S4Vectors::SimpleList
 
-**Matrix orientation matters**: genes/probes in rows, samples in columns (matching R). Property aliases provided (`pData`/`phenoData`, `fData`/`featureData`) to match R accessor patterns.
+**Critical**: Matrix orientation is `[genes/probes, samples]`—never transpose. Property aliases (`pData`/`phenoData`) match R accessor patterns.
 
-### Three-Layer API Design
-1. **User-facing**: `ExpressionAtlasClient` class ([client.py](../src/expression_atlas/client.py))
-2. **Low-level API**: `BioStudiesAPI` ([api.py](../src/expression_atlas/api.py))—handles pagination, metadata parsing
-3. **Download layer**: FTP operations with dual R/TSV strategy ([download.py](../src/expression_atlas/download.py))
+## Code Conventions
 
-## Key Patterns
+### Type Hints (Strict)
+```python
+# CORRECT - Python 3.9+ union syntax
+def func(value: str | None) -> dict[str, Any]: ...
+
+# WRONG - don't use Optional
+def func(value: Optional[str]) -> Dict[str, Any]: ...
+```
 
 ### Accession Validation
-Strict regex pattern enforced: `E-XXXX-####` (e.g., `E-MTAB-1624`). See [validation.py](../src/expression_atlas/validation.py) line 9. Always validate before FTP requests.
+Pattern: `E-XXXX-####` (e.g., `E-MTAB-1624`). Always call `validate_accession()` before FTP requests.
 
-### Error Handling
-Custom exceptions in [exceptions.py](../src/expression_atlas/exceptions.py) include helpful URLs:
-- `InvalidAccessionError`: Malformed accession strings
-- `APIError`: BioStudies API failures (includes status code)
-- `DownloadError`: FTP/data parsing failures (includes accession and reason)
+### Exception Pattern
+All exceptions in `exceptions.py` include EBI support URL:
+```python
+raise DownloadError(accession, f"Cloud converter failed: {e}")
+# Message includes: "contact https://www.ebi.ac.uk/about/contact/support/gxa"
+```
 
-All include contact links: `https://www.ebi.ac.uk/about/contact/support/gxa`
+### Logging
+Use `logger.info()` for progress, `logger.warning()` for skipped items. Users rely on logs to track long downloads.
 
-### Logging Strategy
-Verbose logging throughout—users track long downloads. Pattern: `logger.info()` for progress, `logger.warning()` for skipped items. See API search pagination in [api.py](../src/expression_atlas/api.py) lines 75-85.
+## Development Commands
 
-### R Parity Tests
-[test_r_parity.py](../tests/test_r_parity.py) mirrors R package test suite exactly. Each test includes R equivalent as docstring. Example:
+```bash
+pytest                     # Unit tests (mocked, fast)
+pytest -m integration      # Network tests (BioStudies API, FTP)
+pytest --cov               # Coverage report
+python -m ruff check src/  # Linting (line-length=100)
+python -m mypy src/        # Type checking (disallow_untyped_defs=true)
+```
+
+## Testing Patterns
+
+### Mock HTTP with `responses`
+```python
+@responses.activate
+def test_api_call(self) -> None:
+    responses.add(responses.GET, BIOSTUDIES_SEARCH_URL, json={...})
+```
+
+### R Parity Tests (`test_r_parity.py`)
+Tests mirror R package exactly—include R equivalent in docstring:
 ```python
 def test_valid_accession_returns_true(self) -> None:
     """expect_true(.isValidExperimentAccession("E-MTAB-3007"))"""
     assert is_valid_accession("E-MTAB-3007") is True
 ```
 
-## Development Workflow
+## External Services
 
-### Running Tests
-```bash
-pytest                    # Unit tests (mocked, fast)
-pytest -m integration     # Integration tests (require network)
-pytest --cov             # With coverage (configured in pyproject.toml)
-```
+| Service | URL Pattern | Purpose |
+|---------|-------------|---------|
+| BioStudies API | `http://www.ebi.ac.uk/biostudies/api/v1` | Search, metadata |
+| Atlas FTP | `ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/experiments/{accession}/` | Data files |
+| Converter | `CONVERTER_URL` env var | .Rdata → portable format |
 
-Integration tests marked with `@pytest.mark.integration` and skipped by default (see [pytest.ini](../pytest.ini)).
+## Modification Checklist
 
-### Type Checking & Linting
-Project enforces strict typing (mypy configuration in [pyproject.toml](../pyproject.toml)):
-- `disallow_untyped_defs = true`
-- All functions must have return type hints
-- Use `SomeType | None` not `Optional[SomeType]` (Python 3.9+ union syntax)
+- **New experiment type**: Add to `ExperimentType` enum in `models.py`, update `is_rnaseq()`/`is_microarray()`
+- **Data structure changes**: Verify R compatibility in `rcompat.py`—check matrix orientation
+- **New exception**: Add to `exceptions.py` with EBI support URL
+- **API changes**: Update both search and pagination in `api.py` (they're coupled)
 
-Ruff linting enabled with line length 100. Imports sorted with `isort` profile.
+## Gotchas
 
-### Testing with responses Library
-API tests use `responses` library to mock HTTP. Pattern in [test_api.py](../tests/test_api.py):
-```python
-@responses.activate
-def test_search_single_result(self) -> None:
-    responses.add(responses.GET, BIOSTUDIES_SEARCH_URL, json={...})
-    # test code
-```
-
-## External Dependencies
-
-- **BioStudies API**: `http://www.ebi.ac.uk/biostudies/api/v1` - search and metadata
-- **Expression Atlas FTP**: `ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/experiments/{accession}/` - data files
-- **Optional R integration**: Requires R installation + rpy2 for `.Rdata` loading
-
-## When Modifying Code
-
-1. **Adding new data types**: Extend `ExperimentType` enum in [models.py](../src/expression_atlas/models.py) and update `is_rnaseq()`/`is_microarray()` class methods
-2. **Changing data structures**: Verify R compatibility in [rcompat.py](../src/expression_atlas/rcompat.py)—check matrix orientation and property names
-3. **API changes**: Update both search and pagination logic in [api.py](../src/expression_atlas/api.py)—they're coupled
-4. **New exceptions**: Add to [exceptions.py](../src/expression_atlas/exceptions.py) and include contact URL in message
-
-## Common Gotchas
-
-- Don't use `Optional[T]`—use `T | None` (enforced by ruff UP rules)
-- Matrix indexing: `[rows, columns]` means `[genes/probes, samples]`—never transpose
-- FTP URLs must include full path: `{FTP_BASE_URL}/{accession}/{filename}`
 - BioStudies pagination starts at page 1, not 0
-- `SimpleList` is a dict subclass—use dict operations, not list operations
+- `SimpleList` is a dict subclass—use dict operations
+- FTP URLs need full path: `{FTP_BASE_URL}/{accession}/{filename}`
+- ruff ignores `N802`/`N815` for R-compatible naming (`pData`, `fData`)

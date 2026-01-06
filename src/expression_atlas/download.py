@@ -625,7 +625,7 @@ def _download_via_converter(rdata_url: str, accession: str) -> SimpleList:
     try:
         bundles = client.convert_and_load(rdata_url, accession)
     except ConverterError as e:
-        raise DownloadError(accession, f"Cloud converter failed: {e}")
+        raise DownloadError(accession, f"Cloud converter failed: {e}") from e
 
     # Convert bundles to SimpleList with SummarizedExperiment/ExpressionSet
     result = SimpleList()

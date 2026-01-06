@@ -42,7 +42,8 @@ class TestExpressionAtlasClientIntegration:
         # E-MTAB-1624 is used in the R package tests
         exp = client.get_experiment("E-MTAB-1624")
 
-        # May return None if no TSV data available (only .Rdata)
-        # In that case, we just verify no exception was raised
+        # May return None if no download method available
+        # If returns SimpleList, check it has expected keys
         if exp is not None:
-            assert exp.accession == "E-MTAB-1624"
+            # SimpleList is dict-like, check it has data
+            assert len(exp) > 0, "Expected at least one dataset in result"
