@@ -16,11 +16,11 @@ Expression Atlas is a comprehensive resource of gene and protein expression data
 
 ### Key Features
 
-- 🔬 **Full R Parity**: Data structures mirror Bioconductor's `SummarizedExperiment` and `ExpressionSet`
-- 🚀 **Tri-Fallback Architecture**: Automatic fallback from R → TSV → Cloud converter
-- 📊 **Type Safety**: Comprehensive type hints for IDE autocomplete
-- 🧪 **Battle-Tested**: Extensive test coverage with R parity tests
-- 🌐 **BioStudies Integration**: Search across all Expression Atlas experiments
+- **Full R Parity**: Data structures mirror Bioconductor's `SummarizedExperiment` and `ExpressionSet`
+- **Download Strategy**: R loading, TSV parsing, or optional cloud converter
+- **Type Safety**: Comprehensive type hints for IDE autocomplete
+- **Extensive Tests**: Includes R parity tests
+- **BioStudies Integration**: Search across all Expression Atlas experiments
 
 ---
 
@@ -134,9 +134,9 @@ for acc, exp in experiments.items():
 
 ## Architecture
 
-### Tri-Fallback Download Strategy
+### Download Strategy
 
-The package employs a **three-tier fallback** system for maximum compatibility:
+The package employs multiple paths for maximum compatibility:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -159,9 +159,9 @@ The package employs a **three-tier fallback** system for maximum compatibility:
 ```
 
 **Benefits**:
-- **No R?** Still works via TSV or converter
-- **Maximum fidelity**: R path preserves exact Bioconductor structures
-- **Extensible**: Add new backends without breaking existing code
+- Works without R via TSV or converter
+- R path preserves exact Bioconductor structures
+- Extensible to add new backends without breaking code
 
 ### Data Structures
 
@@ -406,47 +406,11 @@ python -m mypy src/
 python -m ruff format --check src/
 ```
 
-### Contributing
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Add tests**: Ensure `pytest` passes and coverage remains high
-4. **Follow conventions**:
-   - Type hints required (checked by mypy)
-   - Line length: 100 characters
-   - Docstrings: NumPy style
-5. **Submit PR**: Reference related issues
-
----
+ 
 
 ## Compatibility
 
-### Python Versions
-
-- **Minimum**: Python 3.9
-- **Tested**: 3.9, 3.10, 3.11, 3.12, 3.13
-- **Recommended**: Python 3.10+
-
-### R Compatibility
-
-When R is available, requires:
-- **R**: 3.6+
-- **Bioconductor packages** (auto-loaded by .Rdata files):
-  - `SummarizedExperiment`
-  - `Biobase`
-  - `S4Vectors`
-
-### Dependencies
-
-**Core**:
-- `requests` ≥ 2.28.0
-- `pandas` ≥ 1.5.0
-- `numpy` ≥ 1.23.0
-
-**Optional**:
-- `rpy2` ≥ 3.5.0 (for R support)
-- `scipy` ≥ 1.9.0 (for MTX parsing)
-- `botocore` (for AWS IAM auth in converter)
+Supports Python 3.9+ and works with or without R. When R is available (via rpy2), native .Rdata files are loaded; otherwise TSV parsing or the optional cloud converter path is used.
 
 ---
 
@@ -460,9 +424,7 @@ When R is available, requires:
 | Data structures | `SummarizedExperiment`, `ExpressionSet` | Same | Full parity |
 | Matrix orientation | genes × samples | genes × samples | Preserved |
 | Accession validation | `.isValidExperimentAccession()` | `is_valid_accession()` | Same regex |
-| FTP download | ✓ | ✓ | Same URLs |
-| TSV fallback | ✗ | ✓ | Python advantage |
-| Cloud converter | ✗ | ✓ | Python advantage |
+
 
 ---
 
@@ -481,47 +443,7 @@ https://github.com/gdeol4/expression-atlas
 
 ---
 
-## Troubleshooting
 
-### "No R/rpy2 available" warning
-
-**Solution**: Install R and rpy2:
-```bash
-# Install R from https://www.r-project.org/
-pip install rpy2
-```
-
-Or use TSV fallback (no R needed):
-```python
-from expression_atlas.download import has_tsv_files
-has_tsv_files("E-MTAB-1624")  # Check before downloading
-```
-
-### "Connection timeout" during download
-
-**Solution**: Increase timeout:
-```python
-client = ExpressionAtlasClient(timeout=120)  # 2 minutes
-```
-
-### "Not a valid accession" error
-
-**Solution**: Verify format is `E-XXXX-####`:
-```python
-from expression_atlas.validation import is_valid_accession
-is_valid_accession("E-MTAB-1624")  # True
-is_valid_accession("DRP000391")    # False (not Expression Atlas)
-```
-
----
-
-## Support
-
-- **Documentation**: [GitHub Wiki](https://github.com/gdeol4/expression-atlas/wiki)
-- **Issues**: [GitHub Issues](https://github.com/gdeol4/expression-atlas/issues)
-- **Expression Atlas**: [EBI Support](https://www.ebi.ac.uk/about/contact/support/gxa)
-
----
 
 ## License
 
@@ -531,13 +453,7 @@ See [LICENSE](LICENSE) for full text.
 
 ---
 
-## Acknowledgments
 
-- **EMBL-EBI Expression Atlas Team**: For curating and maintaining the database
-- **Bioconductor Community**: For R package design patterns
-- **Contributors**: See [CONTRIBUTORS.md](CONTRIBUTORS.md)
-
----
 
 ## Links
 
