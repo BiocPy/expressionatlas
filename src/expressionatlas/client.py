@@ -6,11 +6,11 @@ import logging
 from collections.abc import Sequence
 
 import pandas as pd
+from biocutils import NamedList
 
 from expressionatlas.api import BioStudiesAPI
 from expressionatlas.download import get_atlas_data, get_atlas_experiment
 from expressionatlas.models import search_results_to_dataframe
-from biocutils import NamedList
 from expressionatlas.validation import validate_accession
 
 logger = logging.getLogger(__name__)

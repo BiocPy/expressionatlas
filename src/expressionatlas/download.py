@@ -19,9 +19,8 @@ from urllib.request import urlopen
 
 import numpy as np
 import pandas as pd
-
-from biocutils import NamedList
 from biocframe import BiocFrame
+from biocutils import NamedList
 from summarizedexperiment import SummarizedExperiment
 
 from expressionatlas.exceptions import DownloadError

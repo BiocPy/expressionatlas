@@ -26,7 +26,6 @@ except PackageNotFoundError:  # pragma: no cover
 finally:
     del version, PackageNotFoundError
 
-
 from expressionatlas.client import ExpressionAtlasClient
 from expressionatlas.download import (
     get_atlas_data,
@@ -41,5 +40,3 @@ from expressionatlas.exceptions import (
     InvalidAccessionError,
 )
 from expressionatlas.models import SearchResult
-from summarizedexperiment import SummarizedExperiment
-from biocutils import NamedList
