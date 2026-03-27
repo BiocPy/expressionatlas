@@ -1,82 +1,54 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
+# Temporary and binary files
+*~
 *.py[cod]
-*$py.class
-
-# C extensions
 *.so
+*.cfg
+!.isort.cfg
+!setup.cfg
+*.orig
+*.log
+*.pot
+__pycache__/*
+.cache/*
+.*.swp
+*/.ipynb_checkpoints/*
+.DS_Store
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
+# Project files
+.ropeproject
+.project
+.pydevproject
+.settings
+.idea
+.vscode
+tags
+
+# Package files
 *.egg
+*.eggs/
+.installed.cfg
+*.egg-info
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+# Unittest and coverage
+htmlcov/*
 .coverage
 .coverage.*
-.cache
-nosetests.xml
+.tox
+junit*.xml
 coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
 .pytest_cache/
 
-# Translations
-*.mo
-*.pot
+# Build and docs folder/files
+build/*
+dist/*
+sdist/*
+docs/api/*
+docs/_rst/*
+docs/_build/*
+cover/*
+MANIFEST
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# ruff
-.ruff_cache/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# OS
-.DS_Store
-Thumbs.db
+# Per-project virtualenvs
+.venv*/
+.conda*/
+.python-version

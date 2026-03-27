@@ -3,8 +3,8 @@
 import pytest
 import responses
 
-from expression_atlas.api import BIOSTUDIES_SEARCH_URL, BIOSTUDIES_STUDY_URL, BioStudiesAPI
-from expression_atlas.exceptions import APIError
+from expressionatlas.api import BIOSTUDIES_SEARCH_URL, BIOSTUDIES_STUDY_URL, BioStudiesAPI
+from expressionatlas.exceptions import APIError
 
 
 class TestBioStudiesAPI:

@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 import requests
 
-from expression_atlas.exceptions import APIError
-from expression_atlas.models import ExperimentType, SearchResult
+from expressionatlas.exceptions import APIError
+from expressionatlas.models import ExperimentType, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +97,7 @@ class BioStudiesAPI:
         all_accessions = self._paginate_results(url, total_hits, page_size)
 
         if len(all_accessions) != total_hits:
-            logger.warning(
-                f"Expected {total_hits} accessions, got {len(all_accessions)}."
-            )
+            logger.warning(f"Expected {total_hits} accessions, got {len(all_accessions)}.")
 
         # Fetch metadata for each experiment
         logger.info(f"Retrieving metadata for {len(all_accessions)} experiments...")
@@ -108,9 +106,7 @@ class BioStudiesAPI:
 
         return results
 
-    def _paginate_results(
-        self, base_url: str, total_hits: int, page_size: int
-    ) -> list[str]:
+    def _paginate_results(self, base_url: str, total_hits: int, page_size: int) -> list[str]:
         """Paginate through search results to collect all accessions."""
         all_accessions: list[str] = []
 
@@ -181,18 +177,14 @@ class BioStudiesAPI:
             connection_error=False,
         )
 
-    def _extract_attribute(
-        self, attributes: list[dict[str, Any]], name: str
-    ) -> str | None:
+    def _extract_attribute(self, attributes: list[dict[str, Any]], name: str) -> str | None:
         """Extract first matching attribute value."""
         for attr in attributes:
             if attr.get("name") == name:
                 return attr.get("value")
         return None
 
-    def _extract_all_attributes(
-        self, attributes: list[dict[str, Any]], name: str
-    ) -> list[str]:
+    def _extract_all_attributes(self, attributes: list[dict[str, Any]], name: str) -> list[str]:
         """Extract all matching attribute values."""
         values = []
         for attr in attributes:

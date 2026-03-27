@@ -1,8 +1,7 @@
 """Tests for data models."""
 
 
-from expression_atlas.models import (
-    ExperimentSummary,
+from expressionatlas.models import (
     ExperimentType,
     SearchResult,
     search_results_to_dataframe,
@@ -64,46 +63,6 @@ class TestSearchResult:
             title=None,
         )
         assert result.connection_error is False
-
-
-class TestExperimentSummary:
-    """Tests for ExperimentSummary dataclass."""
-
-    def test_is_rnaseq_with_data(self) -> None:
-        """Should return True when rnaseq data present."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        exp.rnaseq = "mock_adata"
-        assert exp.is_rnaseq is True
-
-    def test_is_rnaseq_without_data(self) -> None:
-        """Should return False when no rnaseq data."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        assert exp.is_rnaseq is False
-
-    def test_is_microarray_with_data(self) -> None:
-        """Should return True when microarray data present."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        exp.microarray["A-AFFY-126"] = "mock_adata"
-        assert exp.is_microarray is True
-
-    def test_array_designs(self) -> None:
-        """Should return list of array design accessions."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        exp.microarray["A-AFFY-126"] = "mock1"
-        exp.microarray["A-AFFY-127"] = "mock2"
-        assert set(exp.array_designs) == {"A-AFFY-126", "A-AFFY-127"}
-
-    def test_getitem_rnaseq(self) -> None:
-        """Should access rnaseq data via ['rnaseq']."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        exp.rnaseq = "mock_adata"
-        assert exp["rnaseq"] == "mock_adata"
-
-    def test_getitem_microarray(self) -> None:
-        """Should access microarray data via array design accession."""
-        exp = ExperimentSummary(accession="E-MTAB-1624")
-        exp.microarray["A-AFFY-126"] = "mock_adata"
-        assert exp["A-AFFY-126"] == "mock_adata"
 
 
 class TestSearchResultsToDataframe:
