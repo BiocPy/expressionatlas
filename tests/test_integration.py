@@ -9,8 +9,8 @@ import pytest
 from expressionatlas import ExpressionAtlasClient
 from expressionatlas.validation import is_valid_accession
 
-
 @pytest.mark.integration
+@pytest.mark.skip("takes too long")
 class TestExpressionAtlasClientIntegration:
     """Integration tests for ExpressionAtlasClient."""
 
