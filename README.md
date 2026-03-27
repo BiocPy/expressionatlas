@@ -6,7 +6,7 @@
 A Python client for searching and downloading gene expression datasets from [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa), providing full compatibility with the [R Bioconductor package](https://bioconductor.org/packages/ExpressionAtlas/).
 
 > [!NOTE]
-> This package is a fork of [expression-atlas](https://github.com/gdeol4/expression-atlas) to use BiocPy data structures. 
+> This package is a fork of [expression-atlas](https://github.com/gdeol4/expression-atlas) to use BiocPy data structures.
 
 ## Install
 

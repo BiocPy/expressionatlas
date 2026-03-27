@@ -78,12 +78,16 @@ class ConverterClient:
 
     Examples
     --------
-    >>> client = ConverterClient(use_iam_auth=False)
+    >>> client = ConverterClient(
+    ...     use_iam_auth=False
+    ... )
     >>> bundle = client.convert_and_load(
     ...     "ftp://ftp.ebi.ac.uk/.../E-MTAB-7841-atlasExperimentSummary.Rdata",
-    ...     "E-MTAB-7841"
+    ...     "E-MTAB-7841",
     ... )
-    >>> print(bundle.matrix.shape)
+    >>> print(
+    ...     bundle.matrix.shape
+    ... )
     (58735, 48)
     """
 
@@ -125,13 +129,12 @@ class ConverterClient:
                         url=f"{self.service_url.rstrip('/')}/convert",
                         headers=headers,
                     )
-                    SigV4Auth(credentials, "execute-api", os.environ.get("AWS_REGION", "us-east-1")).add_auth(aws_request)
+                    SigV4Auth(credentials, "execute-api", os.environ.get("AWS_REGION", "us-east-1")).add_auth(
+                        aws_request
+                    )
                     headers.update(dict(aws_request.headers))
             except ImportError:
-                logger.warning(
-                    "botocore not installed. Cannot use IAM auth. "
-                    "Install with: pip install botocore"
-                )
+                logger.warning("botocore not installed. Cannot use IAM auth. " "Install with: pip install botocore")
             except Exception as e:
                 logger.warning(f"Failed to sign request: {e}")
         else:
@@ -200,14 +203,9 @@ class ConverterClient:
                 result = json.loads(response.read().decode("utf-8"))
 
             if result.get("status") == "error":
-                raise ConverterError(
-                    result.get("detail", result.get("error", "Unknown error"))
-                )
+                raise ConverterError(result.get("detail", result.get("error", "Unknown error")))
 
-            logger.info(
-                f"Conversion {'cache hit' if result.get('cache_hit') else 'complete'} "
-                f"for {accession}"
-            )
+            logger.info(f"Conversion {'cache hit' if result.get('cache_hit') else 'complete'} " f"for {accession}")
             return result
 
         except Exception as e:

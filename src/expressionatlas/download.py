@@ -67,6 +67,7 @@ def has_tsv_files(accession: str) -> bool:
 def has_converter_available() -> bool:
     """Check if the cloud converter service is configured."""
     import os
+
     return bool(os.environ.get("CONVERTER_URL", ""))
 
 
@@ -105,7 +106,7 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
                     logger.info("TSV not available, trying cloud converter service...")
                     experiment_summary = _download_via_converter(
                         f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
-                        experiment_accession
+                        experiment_accession,
                     )
                 else:
                     raise
@@ -147,9 +148,7 @@ def get_atlas_data(experiment_accessions: list[str]) -> NamedList:
     valid_accessions = filter_valid_accessions(experiment_accessions)
 
     if not valid_accessions:
-        raise ValueError(
-            "None of the accessions passed are valid ArrayExpress/BioStudies accessions. Cannot continue."
-        )
+        raise ValueError("None of the accessions passed are valid ArrayExpress/BioStudies accessions. Cannot continue.")
 
     results = NamedList()
     for accession in valid_accessions:
@@ -163,7 +162,7 @@ def get_atlas_data(experiment_accessions: list[str]) -> NamedList:
 def _download_and_load_rds(url: str, accession: str) -> NamedList:
     """Download and load RDS file using rds2py."""
     import rds2py
-    
+
     with tempfile.NamedTemporaryFile(suffix=".rds", delete=False) as tmp:
         try:
             with urlopen(url, timeout=120) as response:
@@ -174,7 +173,7 @@ def _download_and_load_rds(url: str, accession: str) -> NamedList:
 
     try:
         data = rds2py.read_rds(str(tmp_path))
-        
+
         result = NamedList()
         if isinstance(data, dict):
             for k, v in data.items():
@@ -182,7 +181,7 @@ def _download_and_load_rds(url: str, accession: str) -> NamedList:
         else:
             # Fallback if the top level object is not a dict
             result["data"] = data
-            
+
         return result
     finally:
         tmp_path.unlink()
@@ -215,10 +214,7 @@ def _download_tsv_fallback(accession: str) -> NamedList:
     except URLError:
         logger.debug(f"No normalized TSV for {accession}")
 
-    raise DownloadError(
-        accession,
-        "No TSV or RDS data files found."
-    )
+    raise DownloadError(accession, "No TSV or RDS data files found.")
 
 
 def _download_tsv(url: str) -> pd.DataFrame:
@@ -276,10 +272,7 @@ def _try_download_sdrf(url: str) -> pd.DataFrame | None:
 
 
 def _create_summarized_experiment_from_tsv(
-    df_data: pd.DataFrame,
-    design_df: pd.DataFrame | None,
-    accession: str,
-    assay_name: str = "counts"
+    df_data: pd.DataFrame, design_df: pd.DataFrame | None, accession: str, assay_name: str = "counts"
 ) -> SummarizedExperiment:
     """Create SummarizedExperiment from TSV data."""
     if df_data.empty:
@@ -304,7 +297,7 @@ def _create_summarized_experiment_from_tsv(
     for col in annotation_cols:
         if col != gene_col:
             row_data[col] = df_data[col].values.tolist()
-    
+
     row_bioc = BiocFrame(row_data, row_names=rownames)
 
     col_data = {}
@@ -312,20 +305,12 @@ def _create_summarized_experiment_from_tsv(
         reindexed_df = design_df.reindex(colnames)
         for col in reindexed_df.columns:
             col_data[col] = reindexed_df[col].values.tolist()
-            
+
     col_bioc = BiocFrame(col_data, row_names=colnames)
 
-    metadata = {
-        "accession": accession,
-        "source": "tsv"
-    }
+    metadata = {"accession": accession, "source": "tsv"}
 
-    return SummarizedExperiment(
-        assays=assays,
-        row_data=row_bioc,
-        column_data=col_bioc,
-        metadata=metadata
-    )
+    return SummarizedExperiment(assays=assays, row_data=row_bioc, column_data=col_bioc, metadata=metadata)
 
 
 def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
@@ -343,26 +328,22 @@ def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
 
     for name, bundle in bundles.items():
         key = name.replace("dataset_", "") if name.startswith("dataset_") else name
-        
+
         row_bioc = BiocFrame(bundle.genes.to_dict("list"), row_names=bundle.rownames)
         col_bioc = BiocFrame(bundle.samples.to_dict("list"), row_names=bundle.colnames)
-        
+
         assays = {}
         if bundle.matrix is not None:
-             assays["counts" if key == "rnaseq" else "exprs"] = bundle.matrix
-             
+            assays["counts" if key == "rnaseq" else "exprs"] = bundle.matrix
+
         meta = bundle.meta.copy()
         meta["source"] = "converter"
-        
-        se = SummarizedExperiment(
-             assays=assays,
-             row_data=row_bioc,
-             column_data=col_bioc,
-             metadata=meta
-        )
+
+        se = SummarizedExperiment(assays=assays, row_data=row_bioc, column_data=col_bioc, metadata=meta)
         result[key] = se
 
     return result
+
 
 download_experiment = get_atlas_experiment
 download_experiments = get_atlas_data

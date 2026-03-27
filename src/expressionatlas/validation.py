@@ -27,13 +27,21 @@ def is_valid_accession(accession: str) -> bool:
 
     Examples
     --------
-    >>> is_valid_accession("E-MTAB-1624")
+    >>> is_valid_accession(
+    ...     "E-MTAB-1624"
+    ... )
     True
-    >>> is_valid_accession("E-GEOD-11175")
+    >>> is_valid_accession(
+    ...     "E-GEOD-11175"
+    ... )
     True
-    >>> is_valid_accession("DRP000391")
+    >>> is_valid_accession(
+    ...     "DRP000391"
+    ... )
     False
-    >>> is_valid_accession("invalid")
+    >>> is_valid_accession(
+    ...     "invalid"
+    ... )
     False
     """
     if not accession:

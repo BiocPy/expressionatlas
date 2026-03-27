@@ -34,11 +34,21 @@ class ExpressionAtlasClient:
     --------
     >>> client = ExpressionAtlasClient()
     >>> # Search for experiments
-    >>> results = client.search_experiments(["cancer"], species="homo sapiens")
+    >>> results = client.search_experiments(
+    ...     ["cancer"],
+    ...     species="homo sapiens",
+    ... )
     >>> # Download a single experiment
-    >>> exp = client.get_experiment("E-MTAB-1624")
+    >>> exp = client.get_experiment(
+    ...     "E-MTAB-1624"
+    ... )
     >>> # Download multiple experiments
-    >>> exps = client.get_experiments(["E-MTAB-1624", "E-MTAB-1625"])
+    >>> exps = client.get_experiments(
+    ...     [
+    ...         "E-MTAB-1624",
+    ...         "E-MTAB-1625",
+    ...     ]
+    ... )
     """
 
     def __init__(self, timeout: int = 30) -> None:
@@ -95,9 +105,18 @@ class ExpressionAtlasClient:
         --------
         >>> client = ExpressionAtlasClient()
         >>> # Search for salt stress experiments in rice
-        >>> results = client.search_experiments("salt", species="oryza sativa")
+        >>> results = client.search_experiments(
+        ...     "salt",
+        ...     species="oryza sativa",
+        ... )
         >>> # Search with multiple terms
-        >>> results = client.search_experiments(["cancer", "breast"], species="homo sapiens")
+        >>> results = client.search_experiments(
+        ...     [
+        ...         "cancer",
+        ...         "breast",
+        ...     ],
+        ...     species="homo sapiens",
+        ... )
         """
         if not properties:
             raise ValueError("Please provide at least one search term.")
@@ -117,9 +136,7 @@ class ExpressionAtlasClient:
         # Log warning if any connection errors occurred
         error_count = sum(1 for r in results if r.connection_error)
         if error_count > 0:
-            logger.warning(
-                f"{error_count} experiment(s) excluded due to connection errors."
-            )
+            logger.warning(f"{error_count} experiment(s) excluded due to connection errors.")
 
         return df
 
@@ -150,15 +167,27 @@ class ExpressionAtlasClient:
         --------
         >>> client = ExpressionAtlasClient()
         >>> # RNA-seq experiment
-        >>> exp = client.get_experiment("E-MTAB-1625")
-        >>> sumexp = exp["rnaseq"]  # SummarizedExperiment
-        >>> sumexp.assays["counts"]  # counts matrix (genes × samples)
+        >>> exp = client.get_experiment(
+        ...     "E-MTAB-1625"
+        ... )
+        >>> sumexp = exp[
+        ...     "rnaseq"
+        ... ]  # SummarizedExperiment
+        >>> sumexp.assays[
+        ...     "counts"
+        ... ]  # counts matrix (genes × samples)
         >>> sumexp.colData  # sample annotations
         >>>
         >>> # Microarray experiment
-        >>> exp = client.get_experiment("E-MTAB-1624")
-        >>> eset = exp["A-AFFY-126"]  # SummarizedExperiment
-        >>> eset.assays["exprs"]  # expression matrix (probes × samples)
+        >>> exp = client.get_experiment(
+        ...     "E-MTAB-1624"
+        ... )
+        >>> eset = exp[
+        ...     "A-AFFY-126"
+        ... ]  # SummarizedExperiment
+        >>> eset.assays[
+        ...     "exprs"
+        ... ]  # expression matrix (probes × samples)
         >>> eset.colData  # sample annotations
         """
         validate_accession(accession)
@@ -198,10 +227,22 @@ class ExpressionAtlasClient:
         Examples
         --------
         >>> client = ExpressionAtlasClient()
-        >>> results = client.search_experiments("cancer", species="homo sapiens")
+        >>> results = client.search_experiments(
+        ...     "cancer",
+        ...     species="homo sapiens",
+        ... )
         >>> # Download all RNA-seq experiments from search results
-        >>> rnaseq_accessions = results[results["Type"].str.contains("RNA-seq", na=False)]["Accession"]
-        >>> experiments = client.get_experiments(rnaseq_accessions.tolist())
+        >>> rnaseq_accessions = results[
+        ...     results[
+        ...         "Type"
+        ...     ].str.contains(
+        ...         "RNA-seq",
+        ...         na=False,
+        ...     )
+        ... ]["Accession"]
+        >>> experiments = client.get_experiments(
+        ...     rnaseq_accessions.tolist()
+        ... )
         >>> # Access: experiments["E-MTAB-XXXX"]["rnaseq"].assays["counts"]
         """
         return get_atlas_data(list(accessions))
