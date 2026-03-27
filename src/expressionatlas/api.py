@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 import requests
 
-from expression_atlas.exceptions import APIError
-from expression_atlas.models import ExperimentType, SearchResult
+from expressionatlas.exceptions import APIError
+from expressionatlas.models import ExperimentType, SearchResult
 
 logger = logging.getLogger(__name__)
 

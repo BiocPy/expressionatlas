@@ -3,7 +3,7 @@
 import re
 from collections.abc import Sequence
 
-from expression_atlas.exceptions import InvalidAccessionError
+from expressionatlas.exceptions import InvalidAccessionError
 
 # Pattern: E-XXXX-#### where XXXX is 4 word characters and #### is one or more digits
 ACCESSION_PATTERN = re.compile(r"^E-\w{4}-\d+$")

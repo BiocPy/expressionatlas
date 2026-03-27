@@ -6,8 +6,8 @@ Run with: pytest -m integration
 
 import pytest
 
-from expression_atlas import ExpressionAtlasClient
-from expression_atlas.validation import is_valid_accession
+from expressionatlas import ExpressionAtlasClient
+from expressionatlas.validation import is_valid_accession
 
 
 @pytest.mark.integration

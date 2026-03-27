@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -56,62 +56,6 @@ class SearchResult:
             "Type": self.experiment_type,
             "Title": self.title,
         }
-
-
-@dataclass
-class ExperimentSummary:
-    """
-    Container for downloaded Expression Atlas experiment data.
-
-    For RNA-seq experiments, data is stored in `rnaseq` attribute.
-    For microarray experiments, data is stored by array design accession.
-    """
-
-    accession: str
-    experiment_type: str | None = None
-    species: str | None = None
-    title: str | None = None
-
-    # RNA-seq data (AnnData object with counts)
-    rnaseq: Any | None = None
-
-    # Microarray data: dict mapping array design accession -> AnnData
-    microarray: dict[str, Any] = field(default_factory=dict)
-
-    # Raw metadata from download
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def is_rnaseq(self) -> bool:
-        """Check if this is an RNA-seq experiment."""
-        return self.rnaseq is not None
-
-    @property
-    def is_microarray(self) -> bool:
-        """Check if this is a microarray experiment."""
-        return len(self.microarray) > 0
-
-    @property
-    def array_designs(self) -> list[str]:
-        """Get list of array design accessions for microarray experiments."""
-        return list(self.microarray.keys())
-
-    def __getitem__(self, key: str) -> Any:
-        """
-        Access experiment data by key.
-
-        For RNA-seq: use 'rnaseq'
-        For microarray: use array design accession (e.g., 'A-AFFY-126')
-        """
-        if key == "rnaseq":
-            return self.rnaseq
-        return self.microarray.get(key)
-
-    def __repr__(self) -> str:
-        data_type = "RNA-seq" if self.is_rnaseq else "Microarray"
-        if self.is_microarray:
-            data_type += f" ({len(self.microarray)} array design(s))"
-        return f"ExperimentSummary(accession='{self.accession}', type='{data_type}')"
 
 
 def search_results_to_dataframe(results: list[SearchResult]) -> pd.DataFrame:

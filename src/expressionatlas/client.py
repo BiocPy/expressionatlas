@@ -7,11 +7,11 @@ from collections.abc import Sequence
 
 import pandas as pd
 
-from expression_atlas.api import BioStudiesAPI
-from expression_atlas.download import get_atlas_data, get_atlas_experiment
-from expression_atlas.models import search_results_to_dataframe
-from expression_atlas.rcompat import SimpleList
-from expression_atlas.validation import validate_accession
+from expressionatlas.api import BioStudiesAPI
+from expressionatlas.download import get_atlas_data, get_atlas_experiment
+from expressionatlas.models import search_results_to_dataframe
+from biocutils import NamedList
+from expressionatlas.validation import validate_accession
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +27,8 @@ class ExpressionAtlasClient:
     - get_experiments() -> getAtlasData()
 
     Data is returned in R-compatible formats:
-    - RNA-seq: SummarizedExperiment (genes × samples matrix, same orientation as R)
-    - Microarray: ExpressionSet (probes × samples matrix, same orientation as R)
+    - RNA-seq: SummarizedExperiment (assays["counts"] matrix)
+    - Microarray: SummarizedExperiment (assays["exprs"] matrix)
 
     Examples
     --------
@@ -123,7 +123,7 @@ class ExpressionAtlasClient:
 
         return df
 
-    def get_experiment(self, accession: str) -> SimpleList | None:
+    def get_experiment(self, accession: str) -> NamedList | None:
         """
         Download a single Expression Atlas experiment.
 
@@ -136,10 +136,10 @@ class ExpressionAtlasClient:
 
         Returns
         -------
-        SimpleList or None
+        NamedList or None
             The downloaded experiment data, or None if download fails.
             For RNA-seq: access via ["rnaseq"] to get SummarizedExperiment
-            For microarray: access via array design (e.g., ["A-AFFY-126"]) to get ExpressionSet
+            For microarray: access via array design (e.g., ["A-AFFY-126"]) to get SummarizedExperiment
 
         Raises
         ------
@@ -157,9 +157,9 @@ class ExpressionAtlasClient:
         >>>
         >>> # Microarray experiment
         >>> exp = client.get_experiment("E-MTAB-1624")
-        >>> eset = exp["A-AFFY-126"]  # ExpressionSet
-        >>> eset.exprs  # expression matrix (probes × samples)
-        >>> eset.phenoData  # sample annotations
+        >>> eset = exp["A-AFFY-126"]  # SummarizedExperiment
+        >>> eset.assays["exprs"]  # expression matrix (probes × samples)
+        >>> eset.colData  # sample annotations
         """
         validate_accession(accession)
         return get_atlas_experiment(accession)
@@ -168,7 +168,7 @@ class ExpressionAtlasClient:
         self,
         accessions: Sequence[str],
         skip_invalid: bool = True,
-    ) -> SimpleList:
+    ) -> NamedList:
         """
         Download multiple Expression Atlas experiments.
 
@@ -184,8 +184,8 @@ class ExpressionAtlasClient:
 
         Returns
         -------
-        SimpleList
-            Dictionary-like object mapping accession to experiment data (SimpleList).
+        NamedList
+            Dictionary-like object mapping accession to experiment data (NamedList).
             Failed downloads are excluded from the result.
 
         Raises
