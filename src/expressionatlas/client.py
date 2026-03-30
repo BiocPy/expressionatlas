@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
-import pandas as pd
+from biocframe import BiocFrame
 from biocutils import NamedList
 
 from expressionatlas.api import BioStudiesAPI
 from expressionatlas.download import get_atlas_data, get_atlas_experiment
-from expressionatlas.models import search_results_to_dataframe
+from expressionatlas.models import search_results_to_biocframe
 from expressionatlas.validation import validate_accession
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ExpressionAtlasClient:
         self,
         properties: str | Sequence[str],
         species: str | None = None,
-    ) -> pd.DataFrame:
+    ) -> BiocFrame:
         """
         Search for Expression Atlas experiments matching given criteria.
 
@@ -90,8 +90,8 @@ class ExpressionAtlasClient:
 
         Returns
         -------
-        pandas.DataFrame
-            DataFrame with columns: Accession, Species, Type, Title.
+        BiocFrame
+            BiocFrame with columns: Accession, Species, Type, Title.
             Sorted by Species, Type, then Accession.
 
         Raises
@@ -130,8 +130,8 @@ class ExpressionAtlasClient:
 
         results = self.api.search(properties=list(properties), species=species)
 
-        # Filter out connection errors and convert to DataFrame
-        df = search_results_to_dataframe(results)
+        # Filter out connection errors and convert to BiocFrame
+        df = search_results_to_biocframe(results)
 
         # Log warning if any connection errors occurred
         error_count = sum(1 for r in results if r.connection_error)
@@ -232,16 +232,14 @@ class ExpressionAtlasClient:
         ...     species="homo sapiens",
         ... )
         >>> # Download all RNA-seq experiments from search results
-        >>> rnaseq_accessions = results[
-        ...     results[
-        ...         "Type"
-        ...     ].str.contains(
-        ...         "RNA-seq",
-        ...         na=False,
-        ...     )
-        ... ]["Accession"]
+        >>> types = results.get_column("Type")
+        >>> accessions = results.get_column("Accession")
+        >>> rnaseq_accessions = [
+        ...     acc for acc, typ in zip(accessions, types) 
+        ...     if typ and "RNA-seq" in typ
+        ... ]
         >>> experiments = client.get_experiments(
-        ...     rnaseq_accessions.tolist()
+        ...     rnaseq_accessions
         ... )
         >>> # Access: experiments["E-MTAB-XXXX"]["rnaseq"].assays["counts"]
         """

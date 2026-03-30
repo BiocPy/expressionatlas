@@ -37,10 +37,18 @@ results = client.search_experiments(
     properties=["cancer", "breast"],
     species="homo sapiens"
 )
-print(results.head())
-#   Accession        Species                Type  ...
-# 0 E-MTAB-1624  homo sapiens  microarray data  ...
+print(results)
 ```
+    BiocFrame with 208 rows and 4 columns
+            Accession      Species                    Type                   Title
+                <list>       <list>                  <list>                  <list>
+    [0]  E-MTAB-8198 Homo sapiens Cell line - High-thr... Functional effect of...
+    [1]  E-MTAB-8532 Homo sapiens Human - One-color mi... DNA microarray studi...
+    [2] E-GEOD-43306 Homo sapiens   RNA-seq of coding RNA Translating transcri...
+                ...          ...                     ...                     ...
+    [205]   E-MTAB-779 Homo sapiens transcription profil... OncomiRs like let-7 ...
+    [206]  E-TABM-1118 Homo sapiens transcription profil... Transcrption profili...
+    [207]   E-TABM-601 Homo sapiens transcription profil... Transcription profil...
 
 ### Download RNA-seq Data
 
@@ -53,44 +61,35 @@ rnaseq = exp["rnaseq"]
 counts = rnaseq.assay("counts")  # numpy array: genes × samples
 
 print(f"Shape: {counts.shape[0]} genes × {counts.shape[1]} samples")
-# Shape: 58735 genes × 48 samples
+# Shape: 58735 genes × 24 samples
 
 # Sample metadata (BiocFrame)
 sample_info = rnaseq.get_column_data()
 print(sample_info.get_column_names())
+# ['cell line', 'compound', 'developmental stage', 'disease', 'dose', 'genotype', 'organism', 'organism part']
 
 # Gene annotations (BiocFrame)
 gene_info = rnaseq.get_row_data()
 print(gene_info.shape)
+# (58735, 1)
+
+print(rnaseq)
 ```
+    class: SummarizedExperiment
+    dimensions: (58735, 24)
+    assays(1): ['counts']
+    row_data columns(1): ['Gene Name']
+    row_names(58735): ['ENSG00000000003', 'ENSG00000000005', 'ENSG00000000419', ..., 'ENSG00000285992', 'ENSG00000285993', 'ENSG00000285994']
+    column_data columns(8): ['cell line', 'compound', 'developmental stage', 'disease', 'dose', 'genotype', 'organism', 'organism part']
+    column_names(24): ['ERR3456453', 'ERR3456442', 'ERR3456443', ..., 'ERR3456450', 'ERR3456459', 'ERR3456444']
+    metadata(2): accession source
 
-### Download Microarray Data
-
-```python
-exp = client.get_experiment("E-MTAB-1624")
-
-# Microarray data is keyed by array design
-array_design = "A-AFFY-126"
-eset = exp[array_design] # This is also a SummarizedExperiment now
-
-# Expression matrix (probes × samples)
-intensities = eset.assay("exprs")
-print(intensities.shape)
-# (54675, 96)
-
-# Sample metadata (BiocFrame)
-sample_annotations = eset.get_column_data()
-print(sample_annotations.shape)
-
-# Feature annotations (BiocFrame)
-probe_annotations = eset.get_row_data()
-```
 
 ### Batch Downloads
 
 ```python
 # Download multiple experiments
-accessions = results["Accession"].head(10).tolist()
+accessions = results.get_column("Accession")[:10]
 experiments = client.get_experiments(accessions)
 
 # Access individual experiments

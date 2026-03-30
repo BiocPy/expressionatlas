@@ -10,7 +10,7 @@ from expressionatlas import ExpressionAtlasClient
 from expressionatlas.validation import is_valid_accession
 
 @pytest.mark.integration
-@pytest.mark.skip("takes too long")
+# @pytest.mark.skip("takes too long")
 class TestExpressionAtlasClientIntegration:
     """Integration tests for ExpressionAtlasClient."""
 
@@ -19,14 +19,14 @@ class TestExpressionAtlasClientIntegration:
         client = ExpressionAtlasClient()
         results = client.search_experiments(properties=["cancer"], species="homo sapiens")
 
-        assert len(results) > 0
-        assert "Accession" in results.columns
-        assert "Species" in results.columns
-        assert "Type" in results.columns
-        assert "Title" in results.columns
+        assert results.shape[0] > 0
+        columns = results.get_column_names()
+        assert "Accession" in columns
+        assert "Species" in columns
+        assert "Type" in columns
+        assert "Title" in columns
 
-        # All accessions should be valid
-        for acc in results["Accession"]:
+        for acc in results.get_column("Accession"):
             assert is_valid_accession(acc)
 
     def test_search_salt_oryza(self) -> None:
@@ -34,7 +34,7 @@ class TestExpressionAtlasClientIntegration:
         client = ExpressionAtlasClient()
         results = client.search_experiments(properties=["salt"], species="oryza sativa")
 
-        assert len(results) > 0
+        assert results.shape[0] > 0
 
     def test_download_single_experiment(self) -> None:
         """Download a single experiment should succeed."""

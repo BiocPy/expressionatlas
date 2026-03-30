@@ -10,15 +10,16 @@ The data structures use biocutils, biocframe, and summarizedexperiment.
 
 from __future__ import annotations
 
+import csv
 import io
 import logging
 import tempfile
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
+from typing import TypedDict, Dict, List, Optional, Any
 
 import numpy as np
-import pandas as pd
 from biocframe import BiocFrame
 from biocutils import NamedList
 from summarizedexperiment import SummarizedExperiment
@@ -216,15 +217,25 @@ def _download_tsv_fallback(accession: str) -> NamedList:
     raise DownloadError(accession, "No TSV or RDS data files found.")
 
 
-def _download_tsv(url: str) -> pd.DataFrame:
-    """Download and parse a TSV file from URL."""
+def _download_tsv(url: str) -> dict[str, list[str]]:
+    """Download and parse a TSV file from URL into a column-oriented dictionary."""
     logger.debug(f"Downloading: {url}")
     with urlopen(url, timeout=60) as response:
         content = response.read().decode("utf-8")
-    return pd.read_csv(io.StringIO(content), sep="\t")
+    
+    reader = csv.reader(io.StringIO(content), delimiter="\t")
+    header = next(reader)
+    data = {h: [] for h in header}
+    
+    for row in reader:
+        for i, h in enumerate(header):
+            val = row[i] if i < len(row) else None
+            data[h].append(val)
+            
+    return data
 
 
-def _try_download_sdrf(url: str) -> pd.DataFrame | None:
+def _try_download_sdrf(url: str) -> dict[str, dict[str, str]] | None:
     try:
         logger.debug(f"Downloading sample annotations: {url}")
         with urlopen(url, timeout=60) as response:
@@ -240,71 +251,100 @@ def _try_download_sdrf(url: str) -> pd.DataFrame | None:
         else:
             sample_idx, attr_idx, value_idx = 1, 3, 4
 
-        records: list[tuple[str, str, str]] = []
+        records = {}
         for line in lines:
             parts = line.split("\t")
             if len(parts) > max(sample_idx, attr_idx, value_idx):
                 sample_id = parts[sample_idx]
                 attr_name = parts[attr_idx]
                 attr_value = parts[value_idx]
-                records.append((sample_id, attr_name, attr_value))
+                
+                if sample_id not in records:
+                    records[sample_id] = {}
+                    
+                if attr_name not in records[sample_id]:
+                    records[sample_id][attr_name] = attr_value
 
-        if not records:
-            return None
-
-        df = pd.DataFrame(records, columns=["sample_id", "attribute", "value"])
-
-        result = df.pivot_table(
-            index="sample_id",
-            columns="attribute",
-            values="value",
-            aggfunc="first",
-        )
-
-        result.columns.name = None
-        result.index.name = "sample_id"
-
-        return result
+        return records
     except Exception as e:
         logger.debug(f"Could not download sample annotations: {e}")
         return None
 
 
 def _create_summarized_experiment_from_tsv(
-    df_data: pd.DataFrame, design_df: pd.DataFrame | None, accession: str, assay_name: str = "counts"
+    df_data: dict[str, list[str]], design_data: dict[str, dict[str, str]] | None, accession: str, assay_name: str = "counts"
 ) -> SummarizedExperiment:
     """Create SummarizedExperiment from TSV data."""
-    if df_data.empty:
+    if not df_data:
         return SummarizedExperiment()
 
-    numeric_cols = df_data.select_dtypes(include=[np.number]).columns.tolist()
-    annotation_cols = [c for c in df_data.columns if c not in numeric_cols]
+    all_cols = list(df_data.keys())
+    if not all_cols:
+        return SummarizedExperiment()
+
+    numeric_cols = []
+    annotation_cols = []
+    
+    for col in all_cols:
+        vals = df_data[col]
+        is_num = True
+        for v in vals:
+            if v is not None and v.strip() != "" and v.strip().lower() != "na":
+                try:
+                    float(v)
+                except ValueError:
+                    is_num = False
+                    break
+        if is_num:
+            numeric_cols.append(col)
+        else:
+            annotation_cols.append(col)
 
     if not numeric_cols:
         logger.warning("No numeric columns found in TSV")
         return SummarizedExperiment()
 
-    gene_col = annotation_cols[0] if annotation_cols else df_data.columns[0]
+    gene_col = annotation_cols[0] if annotation_cols else all_cols[0]
     sample_cols = numeric_cols
 
-    rownames = df_data[gene_col].tolist()
+    rownames = df_data[gene_col]
     colnames = sample_cols
 
-    assays = {assay_name: df_data[sample_cols].values.astype(np.float64)}
+    matrix_data = []
+    for c in sample_cols:
+        col_float = []
+        for v in df_data[c]:
+            if v is None or v.strip() == "" or v.strip().lower() == "na":
+                col_float.append(np.nan)
+            else:
+                col_float.append(float(v))
+        matrix_data.append(col_float)
+    
+    matrix = np.array(matrix_data, dtype=np.float64).T
+    assays = {assay_name: matrix}
 
     row_data = {}
     for col in annotation_cols:
         if col != gene_col:
-            row_data[col] = df_data[col].values.tolist()
+            row_data[col] = df_data[col]
 
     row_bioc = BiocFrame(row_data, row_names=rownames)
 
     col_data = {}
-    if design_df is not None and not design_df.empty:
-        reindexed_df = design_df.reindex(colnames)
-        for col in reindexed_df.columns:
-            col_data[col] = reindexed_df[col].values.tolist()
-
+    if design_data is not None and len(design_data) > 0:
+        all_attrs = set()
+        for s in colnames:
+            if s in design_data:
+                all_attrs.update(design_data[s].keys())
+        
+        all_attrs = sorted(list(all_attrs))
+        
+        for attr in all_attrs:
+            col_data[attr] = []
+            for s in colnames:
+                val = design_data.get(s, {}).get(attr, None)
+                col_data[attr].append(val)
+                
     col_bioc = BiocFrame(col_data, row_names=colnames)
 
     metadata = {"accession": accession, "source": "tsv"}
@@ -328,8 +368,9 @@ def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
     for name, bundle in bundles.items():
         key = name.replace("dataset_", "") if name.startswith("dataset_") else name
 
-        row_bioc = BiocFrame(bundle.genes.to_dict("list"), row_names=bundle.rownames)
-        col_bioc = BiocFrame(bundle.samples.to_dict("list"), row_names=bundle.colnames)
+        # We need to make sure bundle.genes and bundle.samples return dictionaries of column names mapping to lists of values
+        row_bioc = BiocFrame(bundle.genes, row_names=bundle.rownames)
+        col_bioc = BiocFrame(bundle.samples, row_names=bundle.colnames)
 
         assays = {}
         if bundle.matrix is not None:

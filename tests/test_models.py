@@ -4,7 +4,7 @@
 from expressionatlas.models import (
     ExperimentType,
     SearchResult,
-    search_results_to_dataframe,
+    search_results_to_biocframe,
 )
 
 
@@ -65,14 +65,14 @@ class TestSearchResult:
         assert result.connection_error is False
 
 
-class TestSearchResultsToDataframe:
-    """Tests for search_results_to_dataframe function."""
+class TestSearchResultsToBiocframe:
+    """Tests for search_results_to_biocframe function."""
 
     def test_empty_list(self) -> None:
-        """Empty list should return empty DataFrame with correct columns."""
-        df = search_results_to_dataframe([])
-        assert list(df.columns) == ["Accession", "Species", "Type", "Title"]
-        assert len(df) == 0
+        """Empty list should return empty BiocFrame with correct columns."""
+        bf = search_results_to_biocframe([])
+        assert list(bf.get_column_names()) == ["Accession", "Species", "Type", "Title"]
+        assert bf.shape[0] == 0
 
     def test_filters_connection_errors(self) -> None:
         """Should exclude results with connection errors."""
@@ -80,9 +80,9 @@ class TestSearchResultsToDataframe:
             SearchResult("E-MTAB-1624", "Human", "RNA-seq", "Test 1"),
             SearchResult("E-MTAB-1625", None, None, None, connection_error=True),
         ]
-        df = search_results_to_dataframe(results)
-        assert len(df) == 1
-        assert df.iloc[0]["Accession"] == "E-MTAB-1624"
+        bf = search_results_to_biocframe(results)
+        assert bf.shape[0] == 1
+        assert bf.get_column("Accession")[0] == "E-MTAB-1624"
 
     def test_sorts_by_species_type_accession(self) -> None:
         """Should sort by Species, Type, then Accession."""
@@ -91,8 +91,9 @@ class TestSearchResultsToDataframe:
             SearchResult("E-MTAB-1", "Human", "Array", "Test 1"),
             SearchResult("E-MTAB-3", "Human", "RNA-seq", "Test 3"),
         ]
-        df = search_results_to_dataframe(results)
+        bf = search_results_to_biocframe(results)
         # Human Array, Human RNA-seq, Zebra RNA-seq
-        assert df.iloc[0]["Accession"] == "E-MTAB-1"
-        assert df.iloc[1]["Accession"] == "E-MTAB-3"
-        assert df.iloc[2]["Accession"] == "E-MTAB-2"
+        ids = bf.get_column("Accession")
+        assert ids[0] == "E-MTAB-1"
+        assert ids[1] == "E-MTAB-3"
+        assert ids[2] == "E-MTAB-2"

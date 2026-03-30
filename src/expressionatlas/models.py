@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-import pandas as pd
+from biocframe import BiocFrame
 
 
 class ExperimentType(str, Enum):
@@ -58,16 +58,27 @@ class SearchResult:
         }
 
 
-def search_results_to_dataframe(results: list[SearchResult]) -> pd.DataFrame:
-    """Convert list of SearchResult objects to a pandas DataFrame."""
+def search_results_to_biocframe(results: list[SearchResult]) -> BiocFrame:
+    """Convert list of SearchResult objects to a BiocFrame."""
+    columns = ["Accession", "Species", "Type", "Title"]
     if not results:
-        return pd.DataFrame(columns=["Accession", "Species", "Type", "Title"])
+        return BiocFrame({col: [] for col in columns}, column_names=columns)
 
-    data = [r.to_dict() for r in results if not r.connection_error]
-    df = pd.DataFrame(data)
-
+    valid_results = [r for r in results if not r.connection_error]
+    
     # Sort by Species, Type, then Accession (matching R package behavior)
-    if not df.empty:
-        df = df.sort_values(["Species", "Type", "Accession"]).reset_index(drop=True)
+    valid_results.sort(
+        key=lambda r: (
+            r.species if r.species is not None else "",
+            r.experiment_type if r.experiment_type is not None else "",
+            r.accession,
+        )
+    )
 
-    return df
+    data = {col: [] for col in columns}
+    for r in valid_results:
+        d = r.to_dict()
+        for col in columns:
+            data[col].append(d[col])
+
+    return BiocFrame(data, column_names=columns)
