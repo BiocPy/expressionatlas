@@ -232,11 +232,21 @@ class ExpressionAtlasClient:
         ...     species="homo sapiens",
         ... )
         >>> # Download all RNA-seq experiments from search results
-        >>> types = results.get_column("Type")
-        >>> accessions = results.get_column("Accession")
+        >>> types = results.get_column(
+        ...     "Type"
+        ... )
+        >>> accessions = results.get_column(
+        ...     "Accession"
+        ... )
         >>> rnaseq_accessions = [
-        ...     acc for acc, typ in zip(accessions, types) 
-        ...     if typ and "RNA-seq" in typ
+        ...     acc
+        ...     for acc, typ in zip(
+        ...         accessions,
+        ...         types,
+        ...     )
+        ...     if typ
+        ...     and "RNA-seq"
+        ...     in typ
         ... ]
         >>> experiments = client.get_experiments(
         ...     rnaseq_accessions

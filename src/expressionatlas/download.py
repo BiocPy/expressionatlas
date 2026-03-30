@@ -17,7 +17,6 @@ import tempfile
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
-from typing import TypedDict, Dict, List, Optional, Any
 
 import numpy as np
 from biocframe import BiocFrame
@@ -222,16 +221,16 @@ def _download_tsv(url: str) -> dict[str, list[str]]:
     logger.debug(f"Downloading: {url}")
     with urlopen(url, timeout=60) as response:
         content = response.read().decode("utf-8")
-    
+
     reader = csv.reader(io.StringIO(content), delimiter="\t")
     header = next(reader)
     data = {h: [] for h in header}
-    
+
     for row in reader:
         for i, h in enumerate(header):
             val = row[i] if i < len(row) else None
             data[h].append(val)
-            
+
     return data
 
 
@@ -258,10 +257,10 @@ def _try_download_sdrf(url: str) -> dict[str, dict[str, str]] | None:
                 sample_id = parts[sample_idx]
                 attr_name = parts[attr_idx]
                 attr_value = parts[value_idx]
-                
+
                 if sample_id not in records:
                     records[sample_id] = {}
-                    
+
                 if attr_name not in records[sample_id]:
                     records[sample_id][attr_name] = attr_value
 
@@ -272,7 +271,10 @@ def _try_download_sdrf(url: str) -> dict[str, dict[str, str]] | None:
 
 
 def _create_summarized_experiment_from_tsv(
-    df_data: dict[str, list[str]], design_data: dict[str, dict[str, str]] | None, accession: str, assay_name: str = "counts"
+    df_data: dict[str, list[str]],
+    design_data: dict[str, dict[str, str]] | None,
+    accession: str,
+    assay_name: str = "counts",
 ) -> SummarizedExperiment:
     """Create SummarizedExperiment from TSV data."""
     if not df_data:
@@ -284,7 +286,7 @@ def _create_summarized_experiment_from_tsv(
 
     numeric_cols = []
     annotation_cols = []
-    
+
     for col in all_cols:
         vals = df_data[col]
         is_num = True
@@ -319,7 +321,7 @@ def _create_summarized_experiment_from_tsv(
             else:
                 col_float.append(float(v))
         matrix_data.append(col_float)
-    
+
     matrix = np.array(matrix_data, dtype=np.float64).T
     assays = {assay_name: matrix}
 
@@ -336,15 +338,15 @@ def _create_summarized_experiment_from_tsv(
         for s in colnames:
             if s in design_data:
                 all_attrs.update(design_data[s].keys())
-        
+
         all_attrs = sorted(list(all_attrs))
-        
+
         for attr in all_attrs:
             col_data[attr] = []
             for s in colnames:
                 val = design_data.get(s, {}).get(attr, None)
                 col_data[attr].append(val)
-                
+
     col_bioc = BiocFrame(col_data, row_names=colnames)
 
     metadata = {"accession": accession, "source": "tsv"}

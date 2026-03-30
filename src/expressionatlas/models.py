@@ -65,7 +65,7 @@ def search_results_to_biocframe(results: list[SearchResult]) -> BiocFrame:
         return BiocFrame({col: [] for col in columns}, column_names=columns)
 
     valid_results = [r for r in results if not r.connection_error]
-    
+
     # Sort by Species, Type, then Accession (matching R package behavior)
     valid_results.sort(
         key=lambda r: (
