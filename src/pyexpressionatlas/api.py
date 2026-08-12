@@ -221,5 +221,5 @@ class BioStudiesAPI:
     def __enter__(self) -> BioStudiesAPI:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()

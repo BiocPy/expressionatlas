@@ -11,6 +11,7 @@ The data structures use biocutils, biocframe, and summarizedexperiment.
 from __future__ import annotations
 
 import csv
+import gzip
 import io
 import logging
 import os
@@ -18,13 +19,11 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-import gzip
 import numpy as np
 import scipy.io
-from pybiocfilecache import BiocFileCache
-
 from biocframe import BiocFrame
 from biocutils import NamedList
+from pybiocfilecache import BiocFileCache
 from singlecellexperiment import SingleCellExperiment
 from summarizedexperiment import SummarizedExperiment
 
