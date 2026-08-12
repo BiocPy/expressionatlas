@@ -96,13 +96,15 @@ class BioStudiesAPI:
 
         results = []
         for hit in hits:
-            results.append(SearchResult(
-                accession=hit.get("accession"),
-                species=None,
-                experiment_type=None,
-                title=hit.get("title"),
-                connection_error=False,
-            ))
+            results.append(
+                SearchResult(
+                    accession=hit.get("accession"),
+                    species=None,
+                    experiment_type=None,
+                    title=hit.get("title"),
+                    connection_error=False,
+                )
+            )
 
         return results
 

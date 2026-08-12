@@ -15,7 +15,6 @@ import io
 import logging
 import tempfile
 from pathlib import Path
-from urllib.error import URLError
 from urllib.request import urlopen
 
 import numpy as np
@@ -46,7 +45,9 @@ def has_tsv_files(accession: str) -> bool:
     try:
         with urlopen(f"{FTP_BASE_URL}/{accession}/", timeout=10) as response:
             content = response.read().decode("utf-8")
-            return any(x in content for x in ["-raw-counts.tsv", "-tpms.tsv", "-fpkms.tsv", "-normalized-expressions.tsv"])
+            return any(
+                x in content for x in ["-raw-counts.tsv", "-tpms.tsv", "-fpkms.tsv", "-normalized-expressions.tsv"]
+            )
     except Exception:
         return False
 
@@ -205,11 +206,16 @@ def _download_tsv_fallback(accession: str) -> NamedList:
     design_df = _try_download_sdrf(f"{base_url}/{sdrf_file}")
 
     rnaseq_files = []
-    for suffix, assay_name in [("-raw-counts.tsv", "counts"), ("-raw-counts.tsv.undecorated", "counts"), ("-tpms.tsv", "tpms"), ("-fpkms.tsv", "fpkms")]:
+    for suffix, assay_name in [
+        ("-raw-counts.tsv", "counts"),
+        ("-raw-counts.tsv.undecorated", "counts"),
+        ("-tpms.tsv", "tpms"),
+        ("-fpkms.tsv", "fpkms"),
+    ]:
         for f in files:
             if f == f"{accession}{suffix}":
                 rnaseq_files.append((f, assay_name))
-    
+
     if rnaseq_files:
         f, assay_name = rnaseq_files[0]
         try:
@@ -222,9 +228,9 @@ def _download_tsv_fallback(accession: str) -> NamedList:
     microarray_files = []
     for f in files:
         if f.startswith(f"{accession}_") and f.endswith("-normalized-expressions.tsv"):
-            design = f[len(accession)+1 :].split("-normalized-expressions")[0]
+            design = f[len(accession) + 1 :].split("-normalized-expressions")[0]
             microarray_files.append((f, design))
-            
+
     for f, design in microarray_files:
         try:
             df = _download_tsv(f"{base_url}/{f}")

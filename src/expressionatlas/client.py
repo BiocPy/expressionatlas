@@ -43,10 +43,12 @@ class ExpressionAtlasClient:
     ...     "E-MTAB-1624"
     ... )
     >>> # Download multiple experiments
-    >>> exps = client.get_experiments([
-    ...     "E-MTAB-1624",
-    ...     "E-MTAB-1625",
-    ... ])
+    >>> exps = client.get_experiments(
+    ...     [
+    ...         "E-MTAB-1624",
+    ...         "E-MTAB-1625",
+    ...     ]
+    ... )
     """
 
     def __init__(self, timeout: int = 30) -> None:
@@ -147,7 +149,7 @@ class ExpressionAtlasClient:
             accessions = [accession]
         else:
             accessions = list(accession)
-            
+
         results = self.api.fetch_experiment_metadata(accessions)
         return search_results_to_biocframe(results)
 
