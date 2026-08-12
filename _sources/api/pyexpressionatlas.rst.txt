@@ -1,0 +1,61 @@
+pyexpressionatlas package
+=========================
+
+Submodules
+----------
+
+pyexpressionatlas.api module
+----------------------------
+
+.. automodule:: pyexpressionatlas.api
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+pyexpressionatlas.client module
+-------------------------------
+
+.. automodule:: pyexpressionatlas.client
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+pyexpressionatlas.download module
+---------------------------------
+
+.. automodule:: pyexpressionatlas.download
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+pyexpressionatlas.exceptions module
+-----------------------------------
+
+.. automodule:: pyexpressionatlas.exceptions
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+pyexpressionatlas.models module
+-------------------------------
+
+.. automodule:: pyexpressionatlas.models
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+pyexpressionatlas.validation module
+-----------------------------------
+
+.. automodule:: pyexpressionatlas.validation
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: pyexpressionatlas
+   :members:
+   :show-inheritance:
+   :undoc-members:
