@@ -488,7 +488,7 @@ def _download_sc_experiment(accession: str) -> SingleCellExperiment:
     """Download and construct a SingleCellExperiment from SC Expression Atlas."""
     base_url = f"{FTP_SC_BASE_URL}/{accession}"
     logger.info(f"Trying single cell FTP for {accession}: {base_url}/")
-    
+
     try:
         mtx_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx.gz"
         logger.debug(f"Downloading mtx.gz: {mtx_url}")
