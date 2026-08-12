@@ -1,5 +1,5 @@
 """
-    Dummy conftest.py for expressionatlas.
+    Dummy conftest.py for pyexpressionatlas.
 
     If you don't know what this is for, just leave it empty.
     Read more about conftest.py under:

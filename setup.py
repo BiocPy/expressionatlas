@@ -1,5 +1,5 @@
 """
-Setup file for expressionatlas.
+Setup file for pyexpressionatlas.
 Use setup.cfg to configure your project.
 
 This file was generated with PyScaffold 4.6.
@@ -12,7 +12,7 @@ from setuptools import setup
 if __name__ == "__main__":
     try:
         setup(use_scm_version={"version_scheme": "no-guess-dev"})
-    except:  # noqa
+    except:
         print(
             "\n\nAn error occurred while building the project, "
             "please ensure you have the most updated version of setuptools, "

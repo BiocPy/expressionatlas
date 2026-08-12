@@ -6,8 +6,6 @@ from __future__ import annotations
 class ExpressionAtlasError(Exception):
     """Base exception for Expression Atlas errors."""
 
-    pass
-
 
 class InvalidAccessionError(ExpressionAtlasError):
     """Raised when an experiment accession is invalid."""

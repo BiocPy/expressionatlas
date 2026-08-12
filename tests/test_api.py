@@ -3,8 +3,8 @@
 import pytest
 import responses
 
-from expressionatlas.api import BIOSTUDIES_SEARCH_URL, BIOSTUDIES_STUDY_URL, BioStudiesAPI
-from expressionatlas.exceptions import APIError
+from pyexpressionatlas.api import BIOSTUDIES_SEARCH_URL, BIOSTUDIES_STUDY_URL, BioStudiesAPI
+from pyexpressionatlas.exceptions import APIError
 
 
 class TestBioStudiesAPI:
@@ -54,6 +54,15 @@ class TestBioStudiesAPI:
             status=200,
         )
 
+        api = BioStudiesAPI()
+        results = api.search(properties=["test"])
+
+        assert len(results) == 1
+        assert results[0].accession == "E-MTAB-1624"
+
+    @responses.activate
+    def test_fetch_experiment_metadata(self) -> None:
+        """Should fetch metadata for given accessions."""
         # Mock study details endpoint
         responses.add(
             responses.GET,
@@ -72,7 +81,7 @@ class TestBioStudiesAPI:
         )
 
         api = BioStudiesAPI()
-        results = api.search(properties=["test"])
+        results = api.fetch_experiment_metadata(["E-MTAB-1624"])
 
         assert len(results) == 1
         assert results[0].accession == "E-MTAB-1624"
