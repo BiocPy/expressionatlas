@@ -17,8 +17,10 @@ Then, import the client:
 ```python
 from expressionatlas import ExpressionAtlasClient
 
-# Initialize the client. You can optionally set a custom timeout.
-client = ExpressionAtlasClient(timeout=30)
+# Initialize the client.
+# By default, files are cached in ~/.cache/expressionatlas_bfc.
+# You can customize this directory by passing the cache_dir parameter:
+client = ExpressionAtlasClient(timeout=30, cache_dir="/my/custom/cache/path")
 ```
 
 ## Searching for Datasets

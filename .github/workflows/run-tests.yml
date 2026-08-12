@@ -38,6 +38,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Expression Atlas data
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/expressionatlas_bfc
+          key: ${{ runner.os }}-expressionatlas-bfc-${{ hashFiles('tests/**') }}
+          restore-keys: |
+            ${{ runner.os }}-expressionatlas-bfc-
+
       - uses: actions/setup-python@v5
         id: setup-python
         with:

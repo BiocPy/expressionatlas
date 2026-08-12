@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from pathlib import Path
 
 from biocframe import BiocFrame
 from biocutils import NamedList
@@ -51,15 +52,21 @@ class ExpressionAtlasClient:
     ... )
     """
 
-    def __init__(self, timeout: int = 30) -> None:
+    def __init__(self, timeout: int = 30, cache_dir: str | Path | None = None) -> None:
         """Initialize Expression Atlas client.
 
         Args:
             timeout:
                 Request timeout in seconds (default: 30).
+            cache_dir:
+                Custom path to store downloaded dataset files (default: ~/.cache/expressionatlas_bfc).
         """
         self.timeout = timeout
         self._api: BioStudiesAPI | None = None
+
+        if cache_dir is not None:
+            from .download import set_cache_dir
+            set_cache_dir(cache_dir)
 
     @property
     def api(self) -> BioStudiesAPI:

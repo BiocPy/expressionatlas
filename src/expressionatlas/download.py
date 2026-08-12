@@ -13,13 +13,17 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import os
 import tempfile
 from pathlib import Path
+from typing import Any
 from urllib.request import urlopen
 
-import numpy as np
 import gzip
+import numpy as np
 import scipy.io
+from pybiocfilecache import BiocFileCache
+
 from biocframe import BiocFrame
 from biocutils import NamedList
 from singlecellexperiment import SingleCellExperiment
@@ -58,9 +62,71 @@ def has_tsv_files(accession: str) -> bool:
 
 def has_converter_available() -> bool:
     """Check if the cloud converter service is configured."""
-    import os
-
     return bool(os.environ.get("CONVERTER_URL", ""))
+
+
+_BFC_INSTANCE: BiocFileCache | None = None
+
+def _get_cache() -> BiocFileCache:
+    """Get or create the BiocFileCache instance for Expression Atlas downloads."""
+    global _BFC_INSTANCE
+    if _BFC_INSTANCE is None:
+        cache_dir = Path.home() / ".cache" / "expressionatlas_bfc"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _BFC_INSTANCE = BiocFileCache(cache_dir)
+    return _BFC_INSTANCE
+
+def set_cache_dir(cache_dir: str | Path) -> None:
+    """Set the BiocFileCache directory globally.
+    
+    Args:
+        cache_dir: Path to the new cache directory.
+    """
+    global _BFC_INSTANCE
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(parents=True, exist_ok=True)
+    _BFC_INSTANCE = BiocFileCache(cache_path)
+
+def _get_filepath(bfc: BiocFileCache, resource: Any) -> str:
+    """Extract file path from BiocFileCache resource record."""
+    if hasattr(resource, "rpath"):
+        rel_path = str(resource.rpath)
+    elif hasattr(resource, "get"):
+        rel_path = str(resource.get("rpath"))
+    else:
+        raise RuntimeError("Failed to resolve cache path.")
+    return str(Path(bfc.config.cache_dir) / rel_path)
+
+def _cached_download(url: str, key: str) -> str:
+    """Download a URL and store it in BiocFileCache, or return cached path."""
+    if url.startswith("file://"):
+        from urllib.request import url2pathname
+        return url2pathname(url[7:])
+
+    bfc = _get_cache()
+    try:
+        existing = bfc.get(key)
+        if existing:
+            path = _get_filepath(bfc, existing)
+            if os.path.exists(path) and os.path.getsize(path) > 0:
+                logger.debug(f"Using cached file for {key}: {path}")
+                return path
+    except Exception:
+        pass
+
+    logger.info(f"Downloading {url} to cache...")
+    resource = bfc.add(key, url, rtype="web", download=True)
+    path = _get_filepath(bfc, resource)
+    
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        try:
+            bfc.remove(key)
+        except Exception:
+            pass
+        raise RuntimeError(f"Download failed for {url}")
+        
+    return path
+
 
 
 def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
@@ -167,33 +233,27 @@ def _download_and_load_rds(url: str, accession: str) -> NamedList:
     elif parsed_url.lower().endswith(".rda"):
         suffix = ".rda"
 
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        try:
-            with urlopen(url, timeout=120) as response:
-                tmp.write(response.read())
-        except Exception as e:
-            raise DownloadError(accession, str(e)) from e
-        tmp_path = Path(tmp.name)
+    try:
+        path = _cached_download(url, url)
+    except Exception as e:
+        raise DownloadError(accession, str(e)) from e
 
     try:
-        try:
-            if suffix in [".rdata", ".rda"]:
-                data = rds2py.read_rda(str(tmp_path))
-            else:
-                data = rds2py.read_rds(str(tmp_path))
-        except Exception as e:
-            raise DownloadError(accession, f"Failed to parse {suffix} file: {e}") from e
-
-        result = NamedList()
-        if isinstance(data, dict):
-            for k, v in data.items():
-                result[k] = v
+        if suffix in [".rdata", ".rda"]:
+            data = rds2py.read_rda(path)
         else:
-            result["data"] = data
+            data = rds2py.read_rds(path)
+    except Exception as e:
+        raise DownloadError(accession, f"Failed to parse {suffix} file: {e}") from e
 
-        return result
-    finally:
-        tmp_path.unlink()
+    result = NamedList()
+    if isinstance(data, dict):
+        for k, v in data.items():
+            result[k] = v
+    else:
+        result["data"] = data
+
+    return result
 
 
 def _download_tsv_fallback(accession: str) -> NamedList:
@@ -254,27 +314,28 @@ def _download_tsv_fallback(accession: str) -> NamedList:
 
 def _download_tsv(url: str) -> dict[str, list[str]]:
     """Download and parse a TSV file from URL into a column-oriented dictionary."""
-    logger.debug(f"Downloading: {url}")
-    with urlopen(url, timeout=60) as response:
-        content = response.read().decode("utf-8")
+    path = _cached_download(url, url)
+    logger.debug(f"Reading: {path}")
+    
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter="\t")
+        header = next(reader)
+        data = {h: [] for h in header}
 
-    reader = csv.reader(io.StringIO(content), delimiter="\t")
-    header = next(reader)
-    data = {h: [] for h in header}
-
-    for row in reader:
-        for i, h in enumerate(header):
-            val = row[i] if i < len(row) else None
-            data[h].append(val)
+        for row in reader:
+            for i, h in enumerate(header):
+                val = row[i] if i < len(row) else None
+                data[h].append(val)
 
     return data
 
 
 def _try_download_sdrf(url: str) -> dict[str, dict[str, str]] | None:
     try:
-        logger.debug(f"Downloading sample annotations: {url}")
-        with urlopen(url, timeout=60) as response:
-            content = response.read().decode("utf-8")
+        path = _cached_download(url, url)
+        logger.debug(f"Reading sample annotations: {path}")
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
 
         lines = content.strip().split("\n")
         if not lines:
@@ -431,18 +492,22 @@ def _download_sc_experiment(accession: str) -> SingleCellExperiment:
     try:
         mtx_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx.gz"
         logger.debug(f"Downloading mtx.gz: {mtx_url}")
-        with urlopen(mtx_url, timeout=60) as res:
-            mtx_data = res.read()
+        mtx_path = _cached_download(mtx_url, mtx_url)
             
         logger.debug("Parsing mtx...")
-        matrix = scipy.io.mmread(io.BytesIO(gzip.decompress(mtx_data)))
+        with open(mtx_path, "rb") as f:
+            matrix = scipy.io.mmread(io.BytesIO(gzip.decompress(f.read())))
         
         logger.debug("Downloading mtx rows and cols...")
-        with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_rows", timeout=30) as res:
-            rows = [line.split()[-1] for line in res.read().decode('utf-8').strip().split('\n')]
+        rows_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx_rows"
+        rows_path = _cached_download(rows_url, rows_url)
+        with open(rows_path, "r", encoding="utf-8") as f:
+            rows = [line.split()[-1] for line in f.read().strip().split('\n')]
             
-        with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_cols", timeout=30) as res:
-            cols = [line.strip() for line in res.read().decode('utf-8').strip().split('\n')]
+        cols_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx_cols"
+        cols_path = _cached_download(cols_url, cols_url)
+        with open(cols_path, "r", encoding="utf-8") as f:
+            cols = [line.strip() for line in f.read().strip().split('\n')]
             
     except Exception as e:
         raise DownloadError(accession, f"Failed to download single cell MTX components: {e}") from e

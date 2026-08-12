@@ -29,8 +29,8 @@ Expression Atlas is a comprehensive resource of gene and protein expression data
 ```python
 from expressionatlas import ExpressionAtlasClient
 
-# Initialize client
-client = ExpressionAtlasClient()
+# Initialize client (optionally specify a custom cache directory)
+client = ExpressionAtlasClient(cache_dir="~/.cache/my_custom_cache")
 
 # Search for experiments
 results = client.search_experiments(
@@ -112,6 +112,13 @@ for acc, exp in experiments.items():
     if exp is not None:
         print(f"{acc}: {exp['rnaseq'].shape if 'rnaseq' in exp else 'microarray'}")
 ```
+
+### Caching Mechanism
+
+To optimize performance and reduce load on the FTP servers, all data downloads are automatically cached locally using `pyBiocFileCache`. 
+
+- By default, the cache is stored at `~/.cache/expressionatlas_bfc`.
+- You can customize this location when initializing the client by passing the `cache_dir` argument: `client = ExpressionAtlasClient(cache_dir="/path/to/custom/cache")`.
 
 ### Direct RData / rda Support
 
