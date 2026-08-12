@@ -441,7 +441,6 @@ def _create_summarized_experiment_from_tsv(
     return SummarizedExperiment(assays=assays, row_data=row_bioc, column_data=col_bioc, metadata=metadata)
 
 
-
 def _download_sc_experiment(accession: str) -> SingleCellExperiment:
     """Download and construct a SingleCellExperiment from SC Expression Atlas."""
     base_url = f"{FTP_SC_BASE_URL}/{accession}"
