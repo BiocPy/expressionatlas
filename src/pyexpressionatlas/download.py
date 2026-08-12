@@ -59,11 +59,6 @@ def has_tsv_files(accession: str) -> bool:
         return False
 
 
-def has_converter_available() -> bool:
-    """Check if the cloud converter service is configured."""
-    return bool(os.environ.get("CONVERTER_URL", ""))
-
-
 _BFC_INSTANCE: BiocFileCache | None = None
 
 
@@ -171,14 +166,7 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
                     try:
                         experiment_summary = _download_sc_experiment(experiment_accession)
                     except DownloadError:
-                        if has_converter_available():
-                            logger.info("TSV/SC not available, trying cloud converter service on RData...")
-                            experiment_summary = _download_via_converter(
-                                f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
-                                experiment_accession,
-                            )
-                        else:
-                            raise
+                        raise
 
         if experiment_summary:
             logger.info(f"Successfully downloaded experiment summary object for {experiment_accession}")
@@ -453,38 +441,6 @@ def _create_summarized_experiment_from_tsv(
 
     return SummarizedExperiment(assays=assays, row_data=row_bioc, column_data=col_bioc, metadata=metadata)
 
-
-def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
-    """Download experiment data via cloud converter."""
-    from pyexpressionatlas.converter import ConverterClient, ConverterError
-
-    client = ConverterClient()
-
-    try:
-        bundles = client.convert_and_load(rdata_url, accession)
-    except ConverterError as e:
-        raise DownloadError(accession, f"Cloud converter failed: {e}") from e
-
-    result = NamedList()
-
-    for name, bundle in bundles.items():
-        key = name.replace("dataset_", "") if name.startswith("dataset_") else name
-
-        # We need to make sure bundle.genes and bundle.samples return dictionaries of column names mapping to lists of values
-        row_bioc = BiocFrame(bundle.genes, row_names=bundle.rownames)
-        col_bioc = BiocFrame(bundle.samples, row_names=bundle.colnames)
-
-        assays = {}
-        if bundle.matrix is not None:
-            assays["counts" if key == "rnaseq" else "exprs"] = bundle.matrix
-
-        meta = bundle.meta.copy()
-        meta["source"] = "converter"
-
-        se = SummarizedExperiment(assays=assays, row_data=row_bioc, column_data=col_bioc, metadata=meta)
-        result[key] = se
-
-    return result
 
 
 def _download_sc_experiment(accession: str) -> SingleCellExperiment:

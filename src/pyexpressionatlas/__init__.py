@@ -19,7 +19,6 @@ from .client import ExpressionAtlasClient
 from .download import (
     get_atlas_data,
     get_atlas_experiment,
-    has_converter_available,
     has_tsv_files,
 )
 from .exceptions import (
