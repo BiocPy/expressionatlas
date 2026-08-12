@@ -1,6 +1,6 @@
 # Tutorial
 
-The `expressionatlas` package bridges the gap between Python and the [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa), making it simple to search, download, and analyze curated gene expression datasets in Python. This client mirrors the [Bioconductor package](https://www.bioconductor.org/packages/release/data/experiment/html/ExpressionAtlas.html), and plugs right into the BiocPy ecosystem (`BiocFrame`, `SummarizedExperiment`, and `SingleCellExperiment`).
+The `pyexpressionatlas` package bridges the gap between Python and the [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa), making it simple to search, download, and analyze curated gene expression datasets in Python. This client mirrors the [Bioconductor package](https://www.bioconductor.org/packages/release/data/experiment/html/ExpressionAtlas.html), and plugs right into the BiocPy ecosystem (`BiocFrame`, `SummarizedExperiment`, and `SingleCellExperiment`).
 
 ---
 
@@ -9,16 +9,16 @@ The `expressionatlas` package bridges the gap between Python and the [EMBL-EBI E
 First, make sure you have the package installed:
 
 ```bash
-pip install expressionatlas
+pip install pyexpressionatlas
 ```
 
 Then, import the client:
 
 ```python
-from expressionatlas import ExpressionAtlasClient
+from pyexpressionatlas import ExpressionAtlasClient
 
 # Initialize the client.
-# By default, files are cached in ~/.cache/expressionatlas_bfc.
+# By default, files are cached in ~/.cache/pyexpressionatlas_bfc.
 # You can customize this directory by passing the cache_dir parameter:
 client = ExpressionAtlasClient(timeout=30, cache_dir="/my/custom/cache/path")
 ```

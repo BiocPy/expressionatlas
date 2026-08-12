@@ -1,7 +1,6 @@
 # Changelog
 
-## Version 0.1 (development)
+## Version 0.0.1
 
-- Feature A added
-- FIX: nasty bug #1729 fixed
-- add your changes here!
+- Initial version of the package to support access to datasets from expression atlas. 
+- Uses `rd2py` to read RDS files and supports bulk RNA-seq, and single-cell RNA-seq datasets.  

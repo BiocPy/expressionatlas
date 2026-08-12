@@ -6,8 +6,8 @@ Run with: pytest -m integration
 
 import pytest
 
-from expressionatlas import ExpressionAtlasClient
-from expressionatlas.validation import is_valid_accession
+from pyexpressionatlas import ExpressionAtlasClient
+from pyexpressionatlas.validation import is_valid_accession
 
 @pytest.mark.integration
 # @pytest.mark.skip("takes too long")

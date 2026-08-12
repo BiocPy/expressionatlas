@@ -205,7 +205,7 @@ def get_atlas_data(experiment_accessions: list[str]) -> NamedList:
     Returns:
         Dictionary-like object mapping accession to experiment data.
     """
-    from expressionatlas.validation import filter_valid_accessions
+    from pyexpressionatlas.validation import filter_valid_accessions
 
     if not experiment_accessions:
         raise ValueError("Please provide a vector of experiment accessions to download.")
@@ -456,7 +456,7 @@ def _create_summarized_experiment_from_tsv(
 
 def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
     """Download experiment data via cloud converter."""
-    from expressionatlas.converter import ConverterClient, ConverterError
+    from pyexpressionatlas.converter import ConverterClient, ConverterError
 
     client = ConverterClient()
 

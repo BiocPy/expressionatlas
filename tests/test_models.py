@@ -1,7 +1,7 @@
 """Tests for data models."""
 
 
-from expressionatlas.models import (
+from pyexpressionatlas.models import (
     ExperimentType,
     SearchResult,
     search_results_to_biocframe,

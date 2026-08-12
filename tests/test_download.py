@@ -1,6 +1,6 @@
 import pytest
 import rds2py
-from expressionatlas.download import _download_and_load_rds
+from pyexpressionatlas.download import _download_and_load_rds
 
 def test_download_and_load_r_files(tmp_path):
     # Test rds loading

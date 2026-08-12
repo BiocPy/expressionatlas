@@ -2,8 +2,8 @@
 
 import pytest
 
-from expressionatlas.exceptions import InvalidAccessionError
-from expressionatlas.validation import (
+from pyexpressionatlas.exceptions import InvalidAccessionError
+from pyexpressionatlas.validation import (
     filter_valid_accessions,
     is_valid_accession,
     validate_accession,

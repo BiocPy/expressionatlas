@@ -1,7 +1,7 @@
-[![PyPI-Server](https://img.shields.io/pypi/v/expressionatlas.svg)](https://pypi.org/project/expressionatlas/)
-![Unit tests](https://github.com/biocpy/expressionatlas/actions/workflows/run-tests.yml/badge.svg)
+[![PyPI-Server](https://img.shields.io/pypi/v/pyexpressionatlas.svg)](https://pypi.org/project/pyexpressionatlas/)
+![Unit tests](https://github.com/biocpy/pyexpressionatlas/actions/workflows/run-tests.yml/badge.svg)
 
-# expressionatlas
+# pyexpressionatlas
 
 A Python client for searching and downloading gene expression datasets from [EMBL-EBI Expression Atlas](https://www.ebi.ac.uk/gxa), providing full compatibility with the [R Bioconductor package](https://bioconductor.org/packages/ExpressionAtlas/).
 
@@ -10,10 +10,10 @@ A Python client for searching and downloading gene expression datasets from [EMB
 
 ## Install
 
-To get started, install the package from [PyPI](https://pypi.org/project/expressionatlas/)
+To get started, install the package from [PyPI](https://pypi.org/project/pyexpressionatlas/)
 
 ```bash
-pip install expressionatlas
+pip install pyexpressionatlas
 ```
 
 ## Get Started
@@ -27,7 +27,7 @@ Expression Atlas is a comprehensive resource of gene and protein expression data
 ### Basic Usage
 
 ```python
-from expressionatlas import ExpressionAtlasClient
+from pyexpressionatlas import ExpressionAtlasClient
 
 # Initialize client (optionally specify a custom cache directory)
 client = ExpressionAtlasClient(cache_dir="~/.cache/my_custom_cache")

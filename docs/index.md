@@ -1,4 +1,4 @@
-# expressionatlas
+# pyexpressionatlas
 
 Python client for searching and downloading gene expression datasets from EMBL-EBI Expression Atlas
 
