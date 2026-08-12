@@ -427,23 +427,23 @@ def _download_sc_experiment(accession: str) -> SingleCellExperiment:
     """Download and construct a SingleCellExperiment from SC Expression Atlas."""
     base_url = f"{FTP_SC_BASE_URL}/{accession}"
     logger.info(f"Trying single cell FTP for {accession}: {base_url}/")
-    
+
     try:
         mtx_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx.gz"
         logger.debug(f"Downloading mtx.gz: {mtx_url}")
         with urlopen(mtx_url, timeout=60) as res:
             mtx_data = res.read()
-            
+
         logger.debug("Parsing mtx...")
         matrix = scipy.io.mmread(io.BytesIO(gzip.decompress(mtx_data)))
-        
+
         logger.debug("Downloading mtx rows and cols...")
         with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_rows", timeout=30) as res:
-            rows = [line.split()[-1] for line in res.read().decode('utf-8').strip().split('\n')]
-            
+            rows = [line.split()[-1] for line in res.read().decode("utf-8").strip().split("\n")]
+
         with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_cols", timeout=30) as res:
-            cols = [line.strip() for line in res.read().decode('utf-8').strip().split('\n')]
-            
+            cols = [line.strip() for line in res.read().decode("utf-8").strip().split("\n")]
+
     except Exception as e:
         raise DownloadError(accession, f"Failed to download single cell MTX components: {e}") from e
 
