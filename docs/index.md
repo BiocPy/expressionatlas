@@ -20,6 +20,7 @@ Python client for searching and downloading gene expression datasets from EMBL-E
 :maxdepth: 2
 
 Overview <readme>
+Tutorial <tutorial>
 Contributions & Help <contributing>
 License <license>
 Authors <authors>

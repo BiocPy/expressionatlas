@@ -19,8 +19,11 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 import numpy as np
+import gzip
+import scipy.io
 from biocframe import BiocFrame
 from biocutils import NamedList
+from singlecellexperiment import SingleCellExperiment
 from summarizedexperiment import SummarizedExperiment
 
 from .exceptions import DownloadError
@@ -30,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 # FTP base URL for Expression Atlas experiment data
 FTP_BASE_URL = "ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/experiments"
+FTP_SC_BASE_URL = "ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/sc_experiments"
 
 
 def has_tsv_files(accession: str) -> bool:
@@ -63,13 +67,12 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
 
     Args:
         experiment_accession:
-            Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
-            Note: This function only supports bulk Expression Atlas experiments.
-            Single-cell experiment accessions are not supported.
+            Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624" or "E-MTAB-6945").
 
     Returns:
-        For RNA-seq: NamedList with key "rnaseq" containing SummarizedExperiment
-        For microarray: NamedList with array design accessions as keys, each containing SummarizedExperiment
+        For RNA-seq (bulk): NamedList with key "rnaseq" containing SummarizedExperiment
+        For microarray (bulk): NamedList with array design accessions as keys, each containing SummarizedExperiment
+        For Single-cell: SingleCellExperiment object
         Returns None if download fails.
     """
     validate_accession(experiment_accession)
@@ -94,14 +97,18 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
                 try:
                     experiment_summary = _download_tsv_fallback(experiment_accession)
                 except DownloadError:
-                    if has_converter_available():
-                        logger.info("TSV not available, trying cloud converter service...")
-                        experiment_summary = _download_via_converter(
-                            f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
-                            experiment_accession,
-                        )
-                    else:
-                        raise
+                    logger.info("Bulk RData/TSV not available, trying single cell endpoint...")
+                    try:
+                        experiment_summary = _download_sc_experiment(experiment_accession)
+                    except DownloadError:
+                        if has_converter_available():
+                            logger.info("TSV/SC not available, trying cloud converter service on RData...")
+                            experiment_summary = _download_via_converter(
+                                f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
+                                experiment_accession,
+                            )
+                        else:
+                            raise
 
         if experiment_summary:
             logger.info(f"Successfully downloaded experiment summary object for {experiment_accession}")
@@ -408,6 +415,56 @@ def _download_via_converter(rdata_url: str, accession: str) -> NamedList:
         result[key] = se
 
     return result
+
+
+def _download_sc_experiment(accession: str) -> SingleCellExperiment:
+    """Download and construct a SingleCellExperiment from SC Expression Atlas."""
+    base_url = f"{FTP_SC_BASE_URL}/{accession}"
+    logger.info(f"Trying single cell FTP for {accession}: {base_url}/")
+    
+    try:
+        mtx_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx.gz"
+        logger.debug(f"Downloading mtx.gz: {mtx_url}")
+        with urlopen(mtx_url, timeout=60) as res:
+            mtx_data = res.read()
+            
+        logger.debug("Parsing mtx...")
+        matrix = scipy.io.mmread(io.BytesIO(gzip.decompress(mtx_data)))
+        
+        logger.debug("Downloading mtx rows and cols...")
+        with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_rows", timeout=30) as res:
+            rows = [line.split()[-1] for line in res.read().decode('utf-8').strip().split('\n')]
+            
+        with urlopen(f"{base_url}/{accession}.aggregated_filtered_counts.mtx_cols", timeout=30) as res:
+            cols = [line.strip() for line in res.read().decode('utf-8').strip().split('\n')]
+            
+    except Exception as e:
+        raise DownloadError(accession, f"Failed to download single cell MTX components: {e}") from e
+
+    design_data = _try_download_sdrf(f"{base_url}/{accession}.condensed-sdrf.tsv")
+    col_data = {}
+    if design_data is not None and len(design_data) > 0:
+        all_attrs = set()
+        for s in cols:
+            if s in design_data:
+                all_attrs.update(design_data[s].keys())
+        all_attrs = sorted(list(all_attrs))
+        for attr in all_attrs:
+            col_data[attr] = []
+            for s in cols:
+                val = design_data.get(s, {}).get(attr, None)
+                col_data[attr].append(val)
+
+    row_bioc = BiocFrame({}, row_names=rows)
+    col_bioc = BiocFrame(col_data, row_names=cols)
+    metadata = {"accession": accession, "source": "sc_mtx"}
+
+    return SingleCellExperiment(
+        assays={"counts": matrix},
+        row_data=row_bioc,
+        column_data=col_bioc,
+        metadata=metadata,
+    )
 
 
 download_experiment = get_atlas_experiment

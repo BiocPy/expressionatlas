@@ -24,9 +24,6 @@ Expression Atlas is a comprehensive resource of gene and protein expression data
 - **Download**: Retrieve experiment data with automatic format handling
 - **Analyze**: Work with R-compatible data structures in Python
 
-> [!WARNING]
-> This package only supports downloading data from the bulk **Expression Atlas**. It does not support downloading data from the **Single Cell Expression Atlas**. Accessions for single-cell experiments (e.g., `E-MTAB-7041`) will fail to download.
-
 ### Basic Usage
 
 ```python

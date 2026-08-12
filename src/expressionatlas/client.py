@@ -159,13 +159,12 @@ class ExpressionAtlasClient:
         Args:
             accession:
                 ArrayExpress/BioStudies experiment accession (e.g., "E-MTAB-1624").
-                Note: This client only supports bulk Expression Atlas experiments.
-                Single-cell experiment accessions (e.g., "E-MTAB-7041") are not supported.
 
         Returns:
             The downloaded experiment data, or None if download fails.
-            For RNA-seq: access via ["rnaseq"] to get SummarizedExperiment
-            For microarray: access via array design (e.g., ["A-AFFY-126"]) to get SummarizedExperiment
+            For RNA-seq (bulk): access via ["rnaseq"] to get SummarizedExperiment
+            For microarray (bulk): access via array design (e.g., ["A-AFFY-126"]) to get SummarizedExperiment
+            For Single-cell: returns a SingleCellExperiment object
 
         Raises:
             InvalidAccessionError:
