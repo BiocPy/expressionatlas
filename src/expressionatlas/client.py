@@ -66,6 +66,7 @@ class ExpressionAtlasClient:
 
         if cache_dir is not None:
             from .download import set_cache_dir
+
             set_cache_dir(cache_dir)
 
     @property

@@ -115,7 +115,7 @@ for acc, exp in experiments.items():
 
 ### Caching Mechanism
 
-To optimize performance and reduce load on the FTP servers, all data downloads are automatically cached locally using `pyBiocFileCache`. 
+To optimize performance and reduce load on the FTP servers, all data downloads are automatically cached locally using `pyBiocFileCache`.
 
 - By default, the cache is stored at `~/.cache/expressionatlas_bfc`.
 - You can customize this location when initializing the client by passing the `cache_dir` argument: `client = ExpressionAtlasClient(cache_dir="/path/to/custom/cache")`.

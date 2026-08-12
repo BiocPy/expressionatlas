@@ -14,7 +14,6 @@ import csv
 import io
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
@@ -67,6 +66,7 @@ def has_converter_available() -> bool:
 
 _BFC_INSTANCE: BiocFileCache | None = None
 
+
 def _get_cache() -> BiocFileCache:
     """Get or create the BiocFileCache instance for Expression Atlas downloads."""
     global _BFC_INSTANCE
@@ -76,9 +76,10 @@ def _get_cache() -> BiocFileCache:
         _BFC_INSTANCE = BiocFileCache(cache_dir)
     return _BFC_INSTANCE
 
+
 def set_cache_dir(cache_dir: str | Path) -> None:
     """Set the BiocFileCache directory globally.
-    
+
     Args:
         cache_dir: Path to the new cache directory.
     """
@@ -86,6 +87,7 @@ def set_cache_dir(cache_dir: str | Path) -> None:
     cache_path = Path(cache_dir)
     cache_path.mkdir(parents=True, exist_ok=True)
     _BFC_INSTANCE = BiocFileCache(cache_path)
+
 
 def _get_filepath(bfc: BiocFileCache, resource: Any) -> str:
     """Extract file path from BiocFileCache resource record."""
@@ -97,10 +99,12 @@ def _get_filepath(bfc: BiocFileCache, resource: Any) -> str:
         raise RuntimeError("Failed to resolve cache path.")
     return str(Path(bfc.config.cache_dir) / rel_path)
 
+
 def _cached_download(url: str, key: str) -> str:
     """Download a URL and store it in BiocFileCache, or return cached path."""
     if url.startswith("file://"):
         from urllib.request import url2pathname
+
         return url2pathname(url[7:])
 
     bfc = _get_cache()
@@ -117,16 +121,15 @@ def _cached_download(url: str, key: str) -> str:
     logger.info(f"Downloading {url} to cache...")
     resource = bfc.add(key, url, rtype="web", download=True)
     path = _get_filepath(bfc, resource)
-    
+
     if not os.path.exists(path) or os.path.getsize(path) == 0:
         try:
             bfc.remove(key)
         except Exception:
             pass
         raise RuntimeError(f"Download failed for {url}")
-        
-    return path
 
+    return path
 
 
 def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
@@ -316,7 +319,7 @@ def _download_tsv(url: str) -> dict[str, list[str]]:
     """Download and parse a TSV file from URL into a column-oriented dictionary."""
     path = _cached_download(url, url)
     logger.debug(f"Reading: {path}")
-    
+
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         header = next(reader)
@@ -493,22 +496,22 @@ def _download_sc_experiment(accession: str) -> SingleCellExperiment:
         mtx_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx.gz"
         logger.debug(f"Downloading mtx.gz: {mtx_url}")
         mtx_path = _cached_download(mtx_url, mtx_url)
-            
+
         logger.debug("Parsing mtx...")
         with open(mtx_path, "rb") as f:
             matrix = scipy.io.mmread(io.BytesIO(gzip.decompress(f.read())))
-        
+
         logger.debug("Downloading mtx rows and cols...")
         rows_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx_rows"
         rows_path = _cached_download(rows_url, rows_url)
         with open(rows_path, "r", encoding="utf-8") as f:
-            rows = [line.split()[-1] for line in f.read().strip().split('\n')]
-            
+            rows = [line.split()[-1] for line in f.read().strip().split("\n")]
+
         cols_url = f"{base_url}/{accession}.aggregated_filtered_counts.mtx_cols"
         cols_path = _cached_download(cols_url, cols_url)
         with open(cols_path, "r", encoding="utf-8") as f:
-            cols = [line.strip() for line in f.read().strip().split('\n')]
-            
+            cols = [line.strip() for line in f.read().strip().split("\n")]
+
     except Exception as e:
         raise DownloadError(accession, f"Failed to download single cell MTX components: {e}") from e
 
