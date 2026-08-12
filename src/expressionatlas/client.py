@@ -8,10 +8,10 @@ from collections.abc import Sequence
 from biocframe import BiocFrame
 from biocutils import NamedList
 
-from expressionatlas.api import BioStudiesAPI
-from expressionatlas.download import get_atlas_data, get_atlas_experiment
-from expressionatlas.models import search_results_to_biocframe
-from expressionatlas.validation import validate_accession
+from .api import BioStudiesAPI
+from .download import get_atlas_data, get_atlas_experiment
+from .models import search_results_to_biocframe
+from .validation import validate_accession
 
 logger = logging.getLogger(__name__)
 
@@ -43,22 +43,18 @@ class ExpressionAtlasClient:
     ...     "E-MTAB-1624"
     ... )
     >>> # Download multiple experiments
-    >>> exps = client.get_experiments(
-    ...     [
-    ...         "E-MTAB-1624",
-    ...         "E-MTAB-1625",
-    ...     ]
-    ... )
+    >>> exps = client.get_experiments([
+    ...     "E-MTAB-1624",
+    ...     "E-MTAB-1625",
+    ... ])
     """
 
     def __init__(self, timeout: int = 30) -> None:
-        """
-        Initialize Expression Atlas client.
+        """Initialize Expression Atlas client.
 
-        Parameters
-        ----------
-        timeout : int
-            Request timeout in seconds (default: 30).
+        Args:
+            timeout:
+                Request timeout in seconds (default: 30).
         """
         self.timeout = timeout
         self._api: BioStudiesAPI | None = None
@@ -75,34 +71,31 @@ class ExpressionAtlasClient:
         properties: str | Sequence[str],
         species: str | None = None,
     ) -> BiocFrame:
-        """
-        Search for Expression Atlas experiments matching given criteria.
+        """Search for Expression Atlas experiments matching given criteria.
 
         Equivalent to R function: searchAtlasExperiments()
 
-        Parameters
-        ----------
-        properties : str or list of str
-            Search terms (e.g., "cancer" or ["cancer", "breast"]).
-        species : str, optional
-            Species to filter by (e.g., "homo sapiens", "mus musculus").
-            If not provided, searches across all species.
+        Args:
+            properties:
+                Search terms (e.g., "cancer" or ["cancer", "breast"]).
 
-        Returns
-        -------
-        BiocFrame
+            species:
+                Species to filter by (e.g., "homo sapiens", "mus musculus").
+                If not provided, searches across all species.
+
+        Returns:
             BiocFrame with columns: Accession, Species, Type, Title.
             Sorted by Species, Type, then Accession.
+            Note: Species and Type will initially be None. Use `fetch_experiment_metadata`
+            to retrieve full metadata for specific accessions.
 
-        Raises
-        ------
-        ValueError
-            If no search properties provided.
-        APIError
-            If the BioStudies API request fails.
+        Raises:
+            ValueError:
+                If no search properties provided.
+            APIError:
+                If the BioStudies API request fails.
 
-        Examples
-        --------
+        Examples:
         >>> client = ExpressionAtlasClient()
         >>> # Search for salt stress experiments in rice
         >>> results = client.search_experiments(
@@ -140,31 +133,45 @@ class ExpressionAtlasClient:
 
         return df
 
-    def get_experiment(self, accession: str) -> NamedList | None:
+    def fetch_experiment_metadata(self, accession: str | Sequence[str]) -> BiocFrame:
+        """Fetch full metadata for one or more experiment accessions.
+
+        Args:
+            accession:
+                A single accession string or a sequence of accession strings.
+
+        Returns:
+            A BiocFrame containing the full metadata.
         """
-        Download a single Expression Atlas experiment.
+        if isinstance(accession, str):
+            accessions = [accession]
+        else:
+            accessions = list(accession)
+            
+        results = self.api.fetch_experiment_metadata(accessions)
+        return search_results_to_biocframe(results)
+
+    def get_experiment(self, accession: str) -> NamedList | None:
+        """Download a single Expression Atlas experiment.
 
         Equivalent to R function: getAtlasExperiment()
 
-        Parameters
-        ----------
-        accession : str
-            ArrayExpress/BioStudies experiment accession (e.g., "E-MTAB-1624").
+        Args:
+            accession:
+                ArrayExpress/BioStudies experiment accession (e.g., "E-MTAB-1624").
+                Note: This client only supports bulk Expression Atlas experiments.
+                Single-cell experiment accessions (e.g., "E-MTAB-7041") are not supported.
 
-        Returns
-        -------
-        NamedList or None
+        Returns:
             The downloaded experiment data, or None if download fails.
             For RNA-seq: access via ["rnaseq"] to get SummarizedExperiment
             For microarray: access via array design (e.g., ["A-AFFY-126"]) to get SummarizedExperiment
 
-        Raises
-        ------
-        InvalidAccessionError
-            If the accession format is invalid.
+        Raises:
+            InvalidAccessionError:
+                If the accession format is invalid.
 
-        Examples
-        --------
+        Examples:
         >>> client = ExpressionAtlasClient()
         >>> # RNA-seq experiment
         >>> exp = client.get_experiment(
@@ -198,34 +205,29 @@ class ExpressionAtlasClient:
         accessions: Sequence[str],
         skip_invalid: bool = True,
     ) -> NamedList:
-        """
-        Download multiple Expression Atlas experiments.
+        """Download multiple Expression Atlas experiments.
 
         Equivalent to R function: getAtlasData()
 
-        Parameters
-        ----------
-        accessions : list of str
-            List of experiment accessions to download.
-        skip_invalid : bool
-            If True (default), skip invalid accessions with a warning.
-            If False, raise an error on invalid accessions.
+        Args:
+            accessions:
+                List of experiment accessions to download.
 
-        Returns
-        -------
-        NamedList
+            skip_invalid:
+                If True (default), skip invalid accessions with a warning.
+                If False, raise an error on invalid accessions.
+
+        Returns:
             Dictionary-like object mapping accession to experiment data (NamedList).
             Failed downloads are excluded from the result.
 
-        Raises
-        ------
-        ValueError
-            If no valid accessions provided.
-        InvalidAccessionError
-            If skip_invalid is False and an invalid accession is found.
+        Raises:
+            ValueError:
+                If no valid accessions provided.
+            InvalidAccessionError:
+                If skip_invalid is False and an invalid accession is found.
 
-        Examples
-        --------
+        Examples:
         >>> client = ExpressionAtlasClient()
         >>> results = client.search_experiments(
         ...     "cancer",

@@ -23,8 +23,8 @@ from biocframe import BiocFrame
 from biocutils import NamedList
 from summarizedexperiment import SummarizedExperiment
 
-from expressionatlas.exceptions import DownloadError
-from expressionatlas.validation import validate_accession
+from .exceptions import DownloadError
+from .validation import validate_accession
 
 logger = logging.getLogger(__name__)
 
@@ -33,34 +33,22 @@ FTP_BASE_URL = "ftp://ftp.ebi.ac.uk/pub/databases/microarray/data/atlas/experime
 
 
 def has_tsv_files(accession: str) -> bool:
-    """
-    Check if an experiment has TSV files available for download.
+    """Check if an experiment has TSV files available for download.
 
-    Parameters
-    ----------
-    accession : str
-        Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
+    Args:
+        accession:
+            Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
 
-    Returns
-    -------
-    bool
+    Returns:
         True if TSV files are available, False otherwise.
     """
     validate_accession(accession)
-    base_url = f"{FTP_BASE_URL}/{accession}"
-
-    counts_url = f"{base_url}/{accession}-raw-counts.tsv"
-    norm_url = f"{base_url}/{accession}-normalized-expressions.tsv"
-
-    for url in [counts_url, norm_url]:
-        try:
-            with urlopen(url, timeout=10) as response:
-                response.read(100)
-                return True
-        except Exception:
-            continue
-
-    return False
+    try:
+        with urlopen(f"{FTP_BASE_URL}/{accession}/", timeout=10) as response:
+            content = response.read().decode("utf-8")
+            return any(x in content for x in ["-raw-counts.tsv", "-tpms.tsv", "-fpkms.tsv", "-normalized-expressions.tsv"])
+    except Exception:
+        return False
 
 
 def has_converter_available() -> bool:
@@ -71,17 +59,15 @@ def has_converter_available() -> bool:
 
 
 def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
-    """
-    Download and return the data representing a single Expression Atlas experiment.
+    """Download and return the data representing a single Expression Atlas experiment.
 
-    Parameters
-    ----------
-    experiment_accession : str
-        Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
+    Args:
+        experiment_accession:
+            Valid ArrayExpress/BioStudies accession (e.g., "E-MTAB-1624").
+            Note: This function only supports bulk Expression Atlas experiments.
+            Single-cell experiment accessions are not supported.
 
-    Returns
-    -------
-    NamedList or None
+    Returns:
         For RNA-seq: NamedList with key "rnaseq" containing SummarizedExperiment
         For microarray: NamedList with array design accessions as keys, each containing SummarizedExperiment
         Returns None if download fails.
@@ -97,18 +83,25 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
         try:
             experiment_summary = _download_and_load_rds(full_url, experiment_accession)
         except DownloadError:
-            logger.info("RDS not available, trying TSV fallback...")
             try:
-                experiment_summary = _download_tsv_fallback(experiment_accession)
+                rdata_file = f"{experiment_accession}-atlasExperimentSummary.Rdata"
+                rdata_url = f"{FTP_BASE_URL}/{experiment_accession}/{rdata_file}"
+                logger.info(f"RDS not available, trying direct RData download from:\n {rdata_url}")
+                experiment_summary = _download_and_load_rds(rdata_url, experiment_accession)
             except DownloadError:
-                if has_converter_available():
-                    logger.info("TSV not available, trying cloud converter service...")
-                    experiment_summary = _download_via_converter(
-                        f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
-                        experiment_accession,
-                    )
-                else:
-                    raise
+                logger.info("RData not available, trying TSV fallback...")
+
+                try:
+                    experiment_summary = _download_tsv_fallback(experiment_accession)
+                except DownloadError:
+                    if has_converter_available():
+                        logger.info("TSV not available, trying cloud converter service...")
+                        experiment_summary = _download_via_converter(
+                            f"{FTP_BASE_URL}/{experiment_accession}/{experiment_accession}-atlasExperimentSummary.Rdata",
+                            experiment_accession,
+                        )
+                    else:
+                        raise
 
         if experiment_summary:
             logger.info(f"Successfully downloaded experiment summary object for {experiment_accession}")
@@ -126,17 +119,13 @@ def get_atlas_experiment(experiment_accession: str) -> NamedList | None:
 
 
 def get_atlas_data(experiment_accessions: list[str]) -> NamedList:
-    """
-    Download NamedList objects for one or more Expression Atlas experiments.
+    """Download NamedList objects for one or more Expression Atlas experiments.
 
-    Parameters
-    ----------
-    experiment_accessions : list[str]
-        List of experiment accessions to download.
+    Args:
+        experiment_accessions:
+            List of experiment accessions to download.
 
-    Returns
-    -------
-    NamedList
+    Returns:
         Dictionary-like object mapping accession to experiment data.
     """
     from expressionatlas.validation import filter_valid_accessions
@@ -159,10 +148,18 @@ def get_atlas_data(experiment_accessions: list[str]) -> NamedList:
 
 
 def _download_and_load_rds(url: str, accession: str) -> NamedList:
-    """Download and load RDS file using rds2py."""
+    """Download and load RDS or RData/rda file using rds2py."""
     import rds2py
 
-    with tempfile.NamedTemporaryFile(suffix=".rds", delete=False) as tmp:
+    parsed_url = url.split("?")[0]
+    suffix = ".rds"
+
+    if parsed_url.lower().endswith(".rdata"):
+        suffix = ".rdata"
+    elif parsed_url.lower().endswith(".rda"):
+        suffix = ".rda"
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         try:
             with urlopen(url, timeout=120) as response:
                 tmp.write(response.read())
@@ -171,14 +168,19 @@ def _download_and_load_rds(url: str, accession: str) -> NamedList:
         tmp_path = Path(tmp.name)
 
     try:
-        data = rds2py.read_rds(str(tmp_path))
+        try:
+            if suffix in [".rdata", ".rda"]:
+                data = rds2py.read_rda(str(tmp_path))
+            else:
+                data = rds2py.read_rds(str(tmp_path))
+        except Exception as e:
+            raise DownloadError(accession, f"Failed to parse {suffix} file: {e}") from e
 
         result = NamedList()
         if isinstance(data, dict):
             for k, v in data.items():
                 result[k] = v
         else:
-            # Fallback if the top level object is not a dict
             result["data"] = data
 
         return result
@@ -191,29 +193,50 @@ def _download_tsv_fallback(accession: str) -> NamedList:
     result = NamedList()
     base_url = f"{FTP_BASE_URL}/{accession}"
 
-    sdrf_url = f"{base_url}/{accession}.condensed-sdrf.tsv"
-    design_df = _try_download_sdrf(sdrf_url)
-
-    counts_url = f"{base_url}/{accession}-raw-counts.tsv"
     try:
-        counts_df = _download_tsv(counts_url)
-        result["rnaseq"] = _create_summarized_experiment_from_tsv(counts_df, design_df, accession, "counts")
-        logger.info(f"Downloaded RNA-seq data from TSV for {accession}")
-        return result
-    except URLError:
-        logger.debug(f"No raw counts TSV for {accession}")
+        with urlopen(f"{base_url}/", timeout=20) as response:
+            ftp_listing = response.read().decode("utf-8")
+    except Exception as e:
+        raise DownloadError(accession, f"FTP directory not accessible: {e}") from e
 
-    norm_url = f"{base_url}/{accession}-normalized-expressions.tsv"
-    try:
-        norm_df = _download_tsv(norm_url)
-        # mapped to SummarizedExperiment as per instructions
-        result["normalized"] = _create_summarized_experiment_from_tsv(norm_df, design_df, accession, "exprs")
-        logger.info(f"Downloaded normalized data from TSV for {accession}")
-        return result
-    except URLError:
-        logger.debug(f"No normalized TSV for {accession}")
+    files = [line.split()[-1] for line in ftp_listing.strip().split("\n") if line]
 
-    raise DownloadError(accession, "No TSV or RDS data files found.")
+    sdrf_file = next((f for f in files if f.endswith(".condensed-sdrf.tsv")), f"{accession}.condensed-sdrf.tsv")
+    design_df = _try_download_sdrf(f"{base_url}/{sdrf_file}")
+
+    rnaseq_files = []
+    for suffix, assay_name in [("-raw-counts.tsv", "counts"), ("-raw-counts.tsv.undecorated", "counts"), ("-tpms.tsv", "tpms"), ("-fpkms.tsv", "fpkms")]:
+        for f in files:
+            if f == f"{accession}{suffix}":
+                rnaseq_files.append((f, assay_name))
+    
+    if rnaseq_files:
+        f, assay_name = rnaseq_files[0]
+        try:
+            df = _download_tsv(f"{base_url}/{f}")
+            result["rnaseq"] = _create_summarized_experiment_from_tsv(df, design_df, accession, assay_name)
+            logger.info(f"Downloaded RNA-seq data ({assay_name}) from TSV for {accession}")
+        except Exception as e:
+            logger.debug(f"Failed to download or parse {f}: {e}")
+
+    microarray_files = []
+    for f in files:
+        if f.startswith(f"{accession}_") and f.endswith("-normalized-expressions.tsv"):
+            design = f[len(accession)+1 :].split("-normalized-expressions")[0]
+            microarray_files.append((f, design))
+            
+    for f, design in microarray_files:
+        try:
+            df = _download_tsv(f"{base_url}/{f}")
+            result[design] = _create_summarized_experiment_from_tsv(df, design_df, accession, "exprs")
+            logger.info(f"Downloaded microarray data ({design}) from TSV for {accession}")
+        except Exception as e:
+            logger.debug(f"Failed to download or parse {f}: {e}")
+
+    if len(result) == 0:
+        raise DownloadError(accession, "No TSV data files found in FTP directory.")
+
+    return result
 
 
 def _download_tsv(url: str) -> dict[str, list[str]]:

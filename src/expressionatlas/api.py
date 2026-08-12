@@ -8,8 +8,8 @@ from urllib.parse import quote
 
 import requests
 
-from expressionatlas.exceptions import APIError
-from expressionatlas.models import ExperimentType, SearchResult
+from .exceptions import APIError
+from .models import ExperimentType, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +26,11 @@ class BioStudiesAPI:
     """Client for BioStudies API to search Expression Atlas experiments."""
 
     def __init__(self, timeout: int = 30) -> None:
-        """
-        Initialize BioStudies API client.
+        """Initialize BioStudies API client.
 
-        Parameters
-        ----------
-        timeout : int
-            Request timeout in seconds (default: 30).
+        Args:
+            timeout:
+                Request timeout in seconds (default: 30).
         """
         self.timeout = timeout
         self.session = requests.Session()
@@ -43,31 +41,28 @@ class BioStudiesAPI:
         species: str | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> list[SearchResult]:
-        """
-        Search for Expression Atlas experiments.
+        """Search for Expression Atlas experiments.
 
-        Parameters
-        ----------
-        properties : list[str]
-            Search terms (e.g., ["cancer", "breast"]).
-        species : str, optional
-            Species to filter by (e.g., "homo sapiens").
-        page_size : int
-            Number of results per page (default: 100).
+        Args:
+            properties:
+                Search terms (e.g., ["cancer", "breast"]).
 
-        Returns
-        -------
-        list[SearchResult]
+            species:
+                Species to filter by (e.g., "homo sapiens").
+
+            page_size:
+                Number of results per page (default: 100).
+
+        Returns:
             List of search results with experiment metadata.
 
-        Raises
-        ------
-        APIError
-            If the API request fails.
+        Raises:
+            APIError:
+                If the API request fails.
         """
         # Build query URL
-        query_terms = "".join(quote(p) for p in properties)
-        url = f"{BIOSTUDIES_SEARCH_URL}?query={query_terms}&gxa=TRUE&pageSize={page_size}"
+        query_terms = ",".join(quote(p) for p in properties)
+        url = f"{BIOSTUDIES_SEARCH_URL}?query={query_terms}&link_type=gxa&pageSize={page_size}"
 
         if species:
             url += f"&organism={quote(species)}"
@@ -94,21 +89,26 @@ class BioStudiesAPI:
             logger.warning("Total hits count from BioStudies is not exact.")
 
         # Paginate through all results
-        all_accessions = self._paginate_results(url, total_hits, page_size)
+        hits = self._paginate_results(url, total_hits, page_size)
 
-        if len(all_accessions) != total_hits:
-            logger.warning(f"Expected {total_hits} accessions, got {len(all_accessions)}.")
+        if len(hits) != total_hits:
+            logger.warning(f"Expected {total_hits} hits, got {len(hits)}.")
 
-        # Fetch metadata for each experiment
-        logger.info(f"Retrieving metadata for {len(all_accessions)} experiments...")
-        results = self._fetch_experiment_metadata(all_accessions)
-        logger.info("Metadata retrieval completed.")
+        results = []
+        for hit in hits:
+            results.append(SearchResult(
+                accession=hit.get("accession"),
+                species=None,
+                experiment_type=None,
+                title=hit.get("title"),
+                connection_error=False,
+            ))
 
         return results
 
-    def _paginate_results(self, base_url: str, total_hits: int, page_size: int) -> list[str]:
-        """Paginate through search results to collect all accessions."""
-        all_accessions: list[str] = []
+    def _paginate_results(self, base_url: str, total_hits: int, page_size: int) -> list[dict[str, Any]]:
+        """Paginate through search results to collect all hits."""
+        all_hits = []
 
         # Calculate number of pages
         num_pages = (total_hits + page_size - 1) // page_size
@@ -118,20 +118,17 @@ class BioStudiesAPI:
             response = self._request(page_url)
             data = response.json()
 
-            accessions = data.get("hits", [])
-            if isinstance(accessions, list) and accessions:
-                # Extract accession from each hit
-                for hit in accessions:
+            hits = data.get("hits", [])
+            if isinstance(hits, list) and hits:
+                for hit in hits:
                     if isinstance(hit, dict):
-                        acc = hit.get("accession")
+                        all_hits.append(hit)
                     else:
-                        acc = hit
-                    if acc:
-                        all_accessions.append(acc)
+                        all_hits.append({"accession": hit})
 
-        return all_accessions
+        return all_hits
 
-    def _fetch_experiment_metadata(self, accessions: list[str]) -> list[SearchResult]:
+    def fetch_experiment_metadata(self, accessions: list[str]) -> list[SearchResult]:
         """Fetch detailed metadata for each experiment."""
         results: list[SearchResult] = []
 

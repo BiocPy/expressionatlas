@@ -3,30 +3,25 @@
 import re
 from collections.abc import Sequence
 
-from expressionatlas.exceptions import InvalidAccessionError
+from .exceptions import InvalidAccessionError
 
 # Pattern: E-XXXX-#### where XXXX is 4 word characters and #### is one or more digits
 ACCESSION_PATTERN = re.compile(r"^E-\w{4}-\d+$")
 
 
 def is_valid_accession(accession: str) -> bool:
-    """
-    Check if experiment accession matches expected ArrayExpress/BioStudies format.
+    """Check if experiment accession matches expected ArrayExpress/BioStudies format.
 
     Valid format: E-XXXX-#### (e.g., E-MTAB-1624, E-GEOD-11175)
 
-    Parameters
-    ----------
-    accession : str
-        The experiment accession to validate.
+    Args:
+        accession:
+            The experiment accession to validate.
 
-    Returns
-    -------
-    bool
+    Returns:
         True if valid, False otherwise.
 
-    Examples
-    --------
+    Examples:
     >>> is_valid_accession(
     ...     "E-MTAB-1624"
     ... )
@@ -50,23 +45,18 @@ def is_valid_accession(accession: str) -> bool:
 
 
 def validate_accession(accession: str) -> str:
-    """
-    Validate accession and raise error if invalid.
+    """Validate accession and raise error if invalid.
 
-    Parameters
-    ----------
-    accession : str
-        The experiment accession to validate.
+    Args:
+        accession:
+            The experiment accession to validate.
 
-    Returns
-    -------
-    str
+    Returns:
         The validated accession (unchanged if valid).
 
-    Raises
-    ------
-    InvalidAccessionError
-        If the accession format is invalid.
+    Raises:
+        InvalidAccessionError:
+            If the accession format is invalid.
     """
     if not is_valid_accession(accession):
         raise InvalidAccessionError(accession)
@@ -77,26 +67,22 @@ def filter_valid_accessions(
     accessions: Sequence[str],
     raise_on_invalid: bool = False,
 ) -> list[str]:
-    """
-    Filter a list of accessions to only include valid ones.
+    """Filter a list of accessions to only include valid ones.
 
-    Parameters
-    ----------
-    accessions : Sequence[str]
-        List of experiment accessions to filter.
-    raise_on_invalid : bool, optional
-        If True, raise error on first invalid accession.
-        If False (default), silently skip invalid accessions.
+    Args:
+        accessions:
+            List of experiment accessions to filter.
 
-    Returns
-    -------
-    list[str]
+        raise_on_invalid:
+            If True, raise error on first invalid accession.
+            If False (default), silently skip invalid accessions.
+
+    Returns:
         List containing only valid accessions.
 
-    Raises
-    ------
-    InvalidAccessionError
-        If raise_on_invalid is True and an invalid accession is found.
+    Raises:
+        InvalidAccessionError:
+            If raise_on_invalid is True and an invalid accession is found.
     """
     valid = []
     for acc in accessions:

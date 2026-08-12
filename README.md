@@ -24,10 +24,13 @@ Expression Atlas is a comprehensive resource of gene and protein expression data
 - **Download**: Retrieve experiment data with automatic format handling
 - **Analyze**: Work with R-compatible data structures in Python
 
+> [!WARNING]
+> This package only supports downloading data from the bulk **Expression Atlas**. It does not support downloading data from the **Single Cell Expression Atlas**. Accessions for single-cell experiments (e.g., `E-MTAB-7041`) will fail to download.
+
 ### Basic Usage
 
 ```python
-from expression_atlas import ExpressionAtlasClient
+from expressionatlas import ExpressionAtlasClient
 
 # Initialize client
 client = ExpressionAtlasClient()
@@ -42,19 +45,34 @@ print(results)
     BiocFrame with 208 rows and 4 columns
             Accession      Species                    Type                   Title
                 <list>       <list>                  <list>                  <list>
-    [0]  E-MTAB-8198 Homo sapiens Cell line - High-thr... Functional effect of...
-    [1]  E-MTAB-8532 Homo sapiens Human - One-color mi... DNA microarray studi...
-    [2] E-GEOD-43306 Homo sapiens   RNA-seq of coding RNA Translating transcri...
+    [0]  E-MTAB-8198          None                    None Functional effect of...
+    [1]  E-MTAB-8532          None                    None DNA microarray studi...
+    [2] E-GEOD-43306          None                    None Translating transcri...
                 ...          ...                     ...                     ...
-    [205]   E-MTAB-779 Homo sapiens transcription profil... OncomiRs like let-7 ...
-    [206]  E-TABM-1118 Homo sapiens transcription profil... Transcrption profili...
-    [207]   E-TABM-601 Homo sapiens transcription profil... Transcription profil...
+    [205]   E-MTAB-779        None                    None OncomiRs like let-7 ...
+    [206]  E-TABM-1118        None                    None Transcrption profili...
+    [207]   E-TABM-601        None                    None Transcription profil...
+
+### Fetch Full Metadata
+
+The initial search is optimized for speed and does not fetch full metadata. To retrieve complete details (including `Species` and `Type`), use `fetch_experiment_metadata`:
+
+```python
+# Fetch full metadata for specific experiments
+metadata = client.fetch_experiment_metadata(["E-MTAB-8198", "E-MTAB-8532"])
+print(metadata)
+```
+    BiocFrame with 2 rows and 4 columns
+            Accession      Species                    Type                   Title
+               <list>       <list>                  <list>                  <list>
+    [0]   E-MTAB-8198 Homo sapiens Cell line - High-thr... Functional effect of...
+    [1]   E-MTAB-8532 Homo sapiens Human - One-color mi... DNA microarray studi...
 
 ### Download RNA-seq Data
 
 ```python
 # Download a single experiment
-exp = client.get_experiment("E-MTAB-7041")
+exp = client.get_experiment("E-MTAB-1625")
 
 # Access RNA-seq data (SummarizedExperiment)
 rnaseq = exp["rnaseq"]
@@ -97,6 +115,12 @@ for acc, exp in experiments.items():
     if exp is not None:
         print(f"{acc}: {exp['rnaseq'].shape if 'rnaseq' in exp else 'microarray'}")
 ```
+
+### Direct RData / rda Support
+
+The client automatically downloads and parses both `.rds` and `.Rdata` / `.rda` files directly without relying on a cloud converter service:
+- Tries downloading and parsing `.rds` file using `rds2py.read_rds`.
+- If the `.rds` file is not available, falls back to direct download and loading of the `.Rdata` file using `rds2py.read_rda`.
 
 <!-- biocsetup-notes -->
 
