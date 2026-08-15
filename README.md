@@ -1,5 +1,5 @@
 [![PyPI-Server](https://img.shields.io/pypi/v/pyexpressionatlas.svg)](https://pypi.org/project/pyexpressionatlas/)
-![Unit tests](https://github.com/biocpy/pyexpressionatlas/actions/workflows/run-tests.yml/badge.svg)
+![Unit tests](https://github.com/biocpy/expressionatlas/actions/workflows/run-tests.yml/badge.svg)
 
 # pyexpressionatlas
 
