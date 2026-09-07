@@ -33,10 +33,7 @@ from pyexpressionatlas import ExpressionAtlasClient
 client = ExpressionAtlasClient(cache_dir="~/.cache/my_custom_cache")
 
 # Search for experiments
-results = client.search_experiments(
-    properties=["cancer", "breast"],
-    species="homo sapiens"
-)
+results = client.search_experiments(properties=["cancer", "breast"], species="homo sapiens")
 print(results)
 ```
     BiocFrame with 208 rows and 4 columns
